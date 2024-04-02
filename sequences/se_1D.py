@@ -181,11 +181,19 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
         log.info("Done running sequence " + self.get_name())
 
+        # Compute the average
+        rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
+        log.info("New shape of rx data:", rxd_rs.shape)
+        rxd_avg = (np.average(rxd_rs, axis=1))
+        log.info("Done running sequence " + self.get_name())
         log.info("Plotting figures")
+        
         plt.clf()
         plt.title(f"ADC Signal - Grad_{self.param_Gradient}")
         plt.grid(True, color="#333")
-        plt.plot(np.abs(rxd))
+        log.info("Plotting averaged raw signal")
+        plt.plot(np.abs(rxd_avg))
+        
         file = open(self.get_working_folder() + "/other/adc.plot", "wb")
         fig = plt.gcf()
         pickle.dump(fig, file)
@@ -200,7 +208,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
         plt.clf()
         plt.title(f"FFT of Signal - Grad_{self.param_Gradient}")
-        recon = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(rxd)))
+        recon = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(rxd_avg)))
         plt.grid(True, color="#333")
         plt.plot(np.abs(recon))
         file = open(self.get_working_folder() + "/other/fft.plot", "wb")
@@ -215,7 +223,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         result.primary = True
         result.file_path = "other/fft.plot"
         scan_task.results.insert(1, result)
-
+        
         # Save the raw data file
         log.info("Saving rawdata, sequence " + self.get_name())
         self.raw_file_path = self.get_working_folder() + "/rawdata/raw.npy"
