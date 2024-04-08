@@ -1,6 +1,5 @@
 from datetime import datetime, timedelta
 import json
-import time
 
 from PyQt5 import uic
 from PyQt5.QtCore import *
@@ -36,7 +35,8 @@ from services.ui.custommessagebox import CustomMessageBox  # type: ignore
 import services.ui.control as control
 
 from services.ui.errors import SequenceUIFailed, UIException
-
+# Adjustments import
+from sequences.common.util import reading_json_parameter, writing_json_parameter
 import external.seq.adjustments_acq.config as cfg
 
 log = logger.get_logger()
@@ -219,18 +219,6 @@ class ExaminationWindow(QMainWindow):
             5, qta.icon("fa5s.exclamation-circle", color="#E5554F")
         )
         self.scanParametersWidget.setTabVisible(5, False)
-        self.scanParametersWidget.currentChanged.connect(
-            self.scanParametersWidgetChanged
-        )
-        self.larmorUpdateButton.setProperty("type", "toolbar")
-        self.larmorUpdateButton.clicked.connect(self.update_larmor_clicked)
-        self.larmorUpdateButton.setStyleSheet(
-            "QPushButton:hover { background-color: #E0A526; color: #FFF }"
-        )
-        self.larmorUpdateButton.setIcon(qta.icon("fa5s.check"))
-        self.larmorUpdateButton.setText(" Update")
-        self.larmorUpdateButton.setToolTip("Update the Larmor frequency")
-        # self.larmorUpdateButton.setIconSize(QSize(24, 24))
 
         self.problemsWidget.setStyleSheet(
             """
@@ -1374,26 +1362,29 @@ class ExaminationWindow(QMainWindow):
     def store_seqparam_from_ui(self, scan_task):
         scan_task.processing.denoising_strength = self.denoisingSlider.value()
 
+    ### Introducing set transmit frequency feature in adjustments
+        
+    def ui_TX_Freq(self):
+        value = self.TX_Freq_DoubleSpinBox.value()
+        
+    def load_seqparam_to_ui(self, scan_task):
+        TX_Freq = scan_task.adjustment.rf.larmor_frequency
+        self.TX_Freq_DoubleSpinBox.setValue(TX_Freq)
+
+    def store_seqparam_from_ui(self, scan_task):
+        scan_task.adjustment.rf.larmor_frequency = self.TX_Freq_DoubleSpinBox.value()
+        configuration_data = reading_json_parameter()
+        configuration_data.rf_parameters.larmor_frequency_MHz = scan_task.adjustment.rf.larmor_frequency * 1e6
+        writing_json_parameter(config_data=configuration_data)
+        # Reload the configuration -- otherwise it does not get updated until the next start
+        cfg.update()
+
+
+
+
+
     def toggle_flexviewer(self):
         if self.flexViewerWindow.isVisible():
             self.flexViewerWindow.setVisible(False)
         else:
             self.flexViewerWindow.setVisible(True)
-
-    def scanParametersWidgetChanged(self, index):
-        # TODO: This is just a hack to make the Larmor frequency editable from the UI. Needs to be replaced with a cleaner solution.
-        if index == 2:
-            cfg.update()
-            self.larmorSpinBox.setValue(cfg.LARMOR_FREQ)
-
-    def update_larmor_clicked(self):
-        # TODO: This is just a hack to make the Larmor frequency editable from the UI. Needs to be replaced with a cleaner solution.
-        from sequences.common.util import reading_json_parameter, writing_json_parameter
-
-        configuration_data = reading_json_parameter()
-        configuration_data.rf_parameters.larmor_frequency_MHz = (
-            self.larmorSpinBox.value()
-        )
-        writing_json_parameter(config_data=configuration_data)
-        cfg.update()
-        pass
