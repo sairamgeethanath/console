@@ -156,6 +156,7 @@ def is_exam_active() -> bool:
     else:
         return False
 
+
 def get_scan_queue_entry(index: int) -> Any:
     global scan_queue_list
 
@@ -227,16 +228,20 @@ def update_scan_queue_list() -> bool:
     return True
 
 
-def create_new_scan(requested_sequence: str) -> bool:
+def create_new_scan(requested_sequence: str, overwrite_name: str = "") -> bool:
     global system_information
     global exam_information
     global patient_information
 
     exam_information.scan_counter += 1
     scan_uid = helper.generate_uid()
-    default_protocol_name = SequenceBase.get_sequence(
-        requested_sequence
-    ).get_readable_name()
+
+    if overwrite_name:
+        default_protocol_name = overwrite_name
+    else:
+        default_protocol_name = SequenceBase.get_sequence(
+            requested_sequence
+        ).get_readable_name()
     default_seq_parameters = SequenceBase.get_sequence(
         requested_sequence
     ).get_default_parameters()
@@ -281,8 +286,11 @@ def duplicate_sequence(index: int) -> bool:
 
 def duplicate_sequence_dir(template_path: str) -> bool:
     template_scan_data = task.read_task(template_path)
+    # TODO: Error handling if reading file failed
 
-    if not create_new_scan(template_scan_data.sequence):
+    if not create_new_scan(
+        template_scan_data.sequence, template_scan_data.protocol_name
+    ):
         log.error("Failed to create new scan of same sequence.")
         return False
 
