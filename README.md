@@ -6,4 +6,4 @@ This repository contains the console software for the Zeugmatron Z1 MRI scanner 
 
 ## Software Overview and Platform Architecture
 
-<iframe width="560" height="315" src="https://www.youtube.com/embed/8GNmocJP-14?si=4XMxm4KBXTH7ytjV" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+[![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/8GNmocJP-14/0.jpg)](https://www.youtube.com/watch?v=8GNmocJP-14)
