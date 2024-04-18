@@ -4,6 +4,9 @@ This repository contains the console software for the Zeugmatron Z1 MRI scanner 
 
 ![Screenshot from 2024-02-22 21-09-10](https://github.com/mri4all/console/assets/35747793/2da37f29-bd7a-491e-81ea-2f57ce5ae4b2)
 
+
 ## Software Overview and Platform Architecture
+
+The <a href="https://www.youtube.com/embed/8GNmocJP-14" target="_blank">video below</a> provides an overview & demo of the MRI4ALL Console Software. It also gives a brief introduction to the underlying software architecture and explains how custom sequences and reconstruction techniques can be integrated.
 
 [![IMAGE ALT TEXT HERE](https://img.youtube.com/vi/8GNmocJP-14/0.jpg)](https://www.youtube.com/watch?v=8GNmocJP-14)
