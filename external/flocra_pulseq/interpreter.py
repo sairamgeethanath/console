@@ -9,7 +9,8 @@ class PSInterpreter:
     """
     Interpret object that can compile a PulSeq file into a FLOCRA update stream array.
     Run PSInterpreter.compile to compile a .seq file into a [updates]x[variables]
-
+able names to output
+        self._var_names
     Attributes:
         out_dict (complex): Output sequence data
         readout_number (int): Expected number of readouts

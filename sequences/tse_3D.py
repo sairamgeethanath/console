@@ -183,7 +183,7 @@ class SequenceTSE_3D(PulseqSequence, registry_key=Path(__file__).stem):
         log.info("Calculating sequence " + self.get_name())
         ipc_comm.send_status(f"Calculating sequence...")
 
-        if config.get_config().is_hardware_simulation():
+        if config.get_config().hardware_simulation:
             scan_task.processing.recon_mode = "bypass"
         else:
             scan_task.processing.recon_mode = "basic3d"
@@ -192,13 +192,6 @@ class SequenceTSE_3D(PulseqSequence, registry_key=Path(__file__).stem):
         scan_task.processing.dim_size = f"{self.param_Slices},{self.param_Base_Resolution},{2*self.param_Base_Resolution}"
         scan_task.processing.oversampling_read = 2
         self.seq_file_path = self.get_working_folder() + "/seq/acq0.seq"
-
-        fa_exc = cfg.DBG_FA_EXC
-        fa_ref = cfg.DBG_FA_REF
-        if "FA1" in scan_task.other:
-            fa_exc = int(scan_task.other["FA1"])
-        if "FA2" in scan_task.other:
-            fa_ref = int(scan_task.other["FA2"])
 
         if not make_tse_3D.pypulseq_tse3D(
             inputs={
@@ -215,8 +208,6 @@ class SequenceTSE_3D(PulseqSequence, registry_key=Path(__file__).stem):
                 "Ordering": self.param_Ordering,
                 "Plot_Timing": self.param_plot_timing,
                 "dummy_shots": self.param_dummy_shots,
-                "FA1": fa_exc,
-                "FA2": fa_ref,
             },
             check_timing=True,
             output_file=self.seq_file_path,
@@ -268,9 +259,8 @@ class SequenceTSE_3D(PulseqSequence, registry_key=Path(__file__).stem):
             raw_filename="raw",
             expected_duration_sec=expected_duration_sec,
             plot_instructions=plot_instructions,
-            hardware_simulation=config.get_config().is_hardware_simulation() == "True",
+            hardware_simulation=config.get_config().hardware_simulation,
         )
-        scan_task.adjustment.rf.larmor_frequency = cfg.LARMOR_FREQ
 
         if plot_instructions:
             file = open(self.get_working_folder() + "/other/seq.plot", "wb")

@@ -59,7 +59,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 20,
+            "TE": 50,
             "TR": 1000,
             "NSA": 1,
             "FOV": 15,
@@ -161,26 +161,24 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
     def run_sequence(self, scan_task) -> bool:
         log.info("Running sequence " + self.get_name())
-        rxd, rx_t = run_pulseq(
-            seq_file=self.seq_file_path,
-            rf_center=cfg.LARMOR_FREQ,
-            tx_t=1,
-            grad_t=10,
-            tx_warmup=100,
-            shim_x=-0.0,
-            shim_y=-0.0,
-            shim_z=-0.0,
-            grad_cal=False,
-            save_np=False,
-            save_mat=False,
-            save_msgs=True,
-            gui_test=False,
-            case_path=self.get_working_folder(),
-        )
-        scan_task.adjustment.rf.larmor_frequency = cfg.LARMOR_FREQ
-
-        log.info("Done running sequence " + self.get_name())
-
+        iterations = 1
+        for iter in range(iterations):
+            rxd, rx_t = run_pulseq(
+                seq_file=self.seq_file_path,
+                rf_center=scan_task.adjustment.rf.larmor_frequency,
+                tx_t=1,
+                grad_t=10,
+                tx_warmup=100,
+                shim_x=-0.0,
+                shim_y=-0.0,
+                shim_z=-0.0,
+                grad_cal=False,
+                save_np=False,
+                save_mat=False,
+                save_msgs=True,
+                gui_test=False,
+                case_path=self.get_working_folder(),
+            )
         # Compute the average
         rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
         log.info("New shape of rx data:", rxd_rs.shape)
@@ -223,7 +221,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         result.primary = True
         result.file_path = "other/fft.plot"
         scan_task.results.insert(1, result)
-        
+
         # Save the raw data file
         log.info("Saving rawdata, sequence " + self.get_name())
         self.raw_file_path = self.get_working_folder() + "/rawdata/raw.npy"

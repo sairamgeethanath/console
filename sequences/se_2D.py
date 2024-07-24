@@ -4,11 +4,11 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 from PyQt5 import uic
-
+import pickle
 import pypulseq as pp  # type: ignore
 import external.seq.adjustments_acq.config as cfg
 from external.seq.adjustments_acq.scripts import run_pulseq
-
+from sequences.common.get_trajectory import choose_pe_order
 from sequences import PulseqSequence
 from sequences.common import make_se_2D
 from sequences.common import view_traj
@@ -21,13 +21,13 @@ log = logger.get_logger()
 class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
     param_TE: int = 20
-    param_TR: int = 3000
+    param_TR: int = 1000
     param_NSA: int = 1
     param_FOV: int = 20
     param_Orientation: str = "Axial"
-    param_Base_Resolution: int = 96
+    param_Base_Resolution: int = 128
     param_BW: int = 32000
-    param_Trajectory: str = "Catisian"
+    param_Trajectory: str = "Cartesian"
     param_PE_Ordering: str = "Center_out"
     param_PF: int = 1
     param_view_traj: bool = True
@@ -60,16 +60,16 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     def get_default_parameters(self) -> dict:
         return {
             "TE": 20,
-            "TR": 3000,
+            "TR": 1000,
             "NSA": 1,
             "FOV": 20,
             "Orientation": "Axial",
-            "Base_Resolution": 96,
+            "Base_Resolution": 128,
             "BW": 32000,
             "Trajectory": "Cartesian",
             "PE_Ordering": "Center_out",
             "PF": 1,
-            "view_traj": True,
+            "view_traj": False,
         }
 
     def set_parameters(self, parameters, scan_task) -> bool:
@@ -130,6 +130,10 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     def calculate_sequence(self, scan_task) -> bool:
         self.seq_file_path = self.get_working_folder() + "/seq/acq0.seq"
         log.info("Calculating sequence " + self.get_name())
+        # scan_task.processing.dim = 2
+        # scan_task.processing.dim_size = f"{self.param_baseresolution},{2*self.param_baseresolution}"
+        # scan_task.processing.oversampling_read = 2
+        # scan_task.processing.recon_mode = "basic2d"
 
         # ToDo: if self.Trajectory == "Cartesian": (default)
         make_se_2D.pypulseq_se2D(
@@ -170,13 +174,21 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
             scan_task.results.append(result)
 
         return True
+    
+    
 
     def run_sequence(self, scan_task) -> bool:
         log.info("Running sequence " + self.get_name())
 
+        expected_duration_sec = int(
+            self.param_TR
+            * (self.param_Base_Resolution)
+            / 1000
+        )
+
         rxd, rx_t = run_pulseq(
             seq_file=self.seq_file_path,
-            rf_center=cfg.LARMOR_FREQ,
+            rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
             grad_t=10,
             tx_warmup=100,
@@ -189,40 +201,106 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
             save_msgs=False,
             gui_test=False,
             case_path=self.get_working_folder(),
+            expected_duration_sec=expected_duration_sec,
         )
 
+        # # Compute the average
+
+        rxd_rs = np.reshape(rxd, (2 * self.param_Base_Resolution, self.param_Base_Resolution, self.param_NSA), order='F')
+        log.info("New shape of rx data:", rxd_rs.shape)
+        rxd_avg = (np.average(rxd_rs, axis=2))
+        
         log.info("Done running sequence " + self.get_name())
+        # data = rxd_avg.reshape((2 * self.param_Base_Resolution, self.param_Base_Resolution))
+        # log.info("Shape of data:", data.shape)
+        data = rxd_avg #rxd_avg.reshape((self.param_Base_Resolution, 2 * self.param_Base_Resolution))
+        log.info("Plotting figures")
+        
+        kspace_filter = True
 
-        # test for recon testing
-        data = rxd.reshape((70, 70))
-        plt.figure()
-        plt.subplot(131)
+        if kspace_filter is True:
+            shape = data.shape
+            cutoff_radius_ratio = 0.2
+            axes = [np.linspace(-dim/2, dim/2, dim) for dim in shape[0:2]]
+            grid = np.meshgrid(*axes, indexing='xy')
+            pos = np.stack(grid, axis=-1)
+            filter = np.sin(np.pi*np.linalg.norm(pos, axis=-1)/(cutoff_radius_ratio*shape[0]))**2
+            filter = 1 - np.transpose(filter)
+            log.info(np.max(filter))
+            log.info(data.shape)
+            data = np.multiply(data, filter)
+
+
+
+        plt.clf()
+        plt.title(f"k-space data")
+        # plt.grid(True, color="#333")
+        #log.info("Plotting averaged raw signal")
         plt.imshow(np.abs(data))
-        plt.title("kspace, abs")
-        plt.subplot(132)
-        plt.imshow(np.real(data))
-        plt.title("real")
-        plt.subplot(133)
-        plt.imshow(np.imag(data))
-        plt.title("imag")
-        plt.show()
+        plt.set_cmap('jet')
+        plt.clim(0,1.2*np.max(abs(data)))
+        file = open(self.get_working_folder() + "/other/kspace.plot", "wb")
+        fig = plt.gcf()
+        pickle.dump(fig, file)
+        file.close()
+        result = ResultItem()
+        result.name = "k-space"
+        result.description = "Acquired k-space"
+        result.type = "plot"
+        result.autoload_viewer = 1
+        result.file_path = "other/kspace.plot"
+        scan_task.results.insert(0, result)
 
-        img = np.fft.fft2(data)
-        plt.figure()
-        plt.subplot(131)
-        plt.imshow(np.abs(img))
-        plt.title("image, abs")
-        plt.subplot(132)
-        plt.imshow(np.real(img))
-        plt.title("real")
-        plt.subplot(133)
-        plt.imshow(np.imag(img))
-        plt.title("imag")
-        plt.show()
+        plt.clf()
+        plt.title(f"Image data")
+        # recon = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(data)))
+        recon = np.fft.fftshift(np.fft.fft2(data))
+        # plt.grid(True, color="#333")
+        half_width = int(self.param_Base_Resolution / 2)
+        recon2 = np.squeeze(recon[:, half_width:self.param_Base_Resolution + half_width])
+        plt.imshow(np.abs(recon))
+        plt.set_cmap('gray')
+        file = open(self.get_working_folder() + "/other/fft.plot", "wb")
+        fig = plt.gcf()
+        pickle.dump(fig, file)
+        file.close()
+        result = ResultItem()
+        result.name = "FFT"
+        result.description = "FFT of ADC signal"
+        result.type = "plot"
+        result.autoload_viewer = 2
+        result.primary = True
+        result.file_path = "other/fft.plot"
+        scan_task.results.insert(1, result)
+
+        # plt.figure()
+        # plt.subplot(131)
+        # plt.imshow(np.abs(data))
+        # plt.title("kspace, abs")
+        # plt.subplot(132)
+        # plt.imshow(np.real(data))
+        # plt.title("real")
+        # plt.subplot(133)
+        # plt.imshow(np.imag(data))
+        # plt.title("imag")
+        # plt.show()
+
+        # img = np.fft.fft2(data)
+        # plt.figure()
+        # plt.subplot(131)
+        # plt.imshow(np.abs(img))
+        # plt.title("image, abs")
+        # plt.subplot(132)
+        # plt.imshow(np.real(img))
+        # plt.title("real")
+        # plt.subplot(133)
+        # plt.imshow(np.imag(img))
+        # plt.title("imag")
+        # plt.show()
 
         # save the raw data file
         self.raw_file_path = self.get_working_folder() + "/rawdata/raw.npy"
-        np.save(self.raw_file_path, rxd)
+        np.save(self.raw_file_path, data)
 
         log.info("Saving rawdata, sequence " + self.get_name())
         return True

@@ -31,7 +31,7 @@ class Configuration(BaseModel):
     Set description to "hidden" to hide the setting in the UI.
     """
 
-    scanner_ip: str = Field(default="10.42.0.251", description="Scanner IP (internal)")
+    scanner_ip: str = Field(default="10.42.0.114", description="Scanner IP (internal)")
     debug_mode: str = Field(default="False", description="Debug Mode")
     hardware_simulation: str = Field(default="False", description="Hardware Simulation")
     dicom_targets: List[DicomTarget] = []
@@ -61,7 +61,7 @@ class Configuration(BaseModel):
         with open(mri4_all_config_path, "w") as f:
             f.write(self.model_dump_json(indent=4))
 
-    def update(self, data: Dict):
+    def update(self, data: Dict) -> "Configuration":
         update = self.model_dump()
         update.update(data)
         for k, v in (
@@ -69,6 +69,3 @@ class Configuration(BaseModel):
         ):
             setattr(self, k, v)
         return self
-
-    def is_hardware_simulation(self):
-        return self.hardware_simulation == "True"

@@ -27,6 +27,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     param_ADC_samples: int = 4096
     param_ADC_duration: int = 6400
     param_debug_plot: bool = True
+    
 
     @classmethod
     def get_readable_name(self) -> str:
@@ -60,6 +61,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
             "ADC_samples": 4096,
             "ADC_duration": 6400,
             "debug_plot": True,
+            "TX_Freq": 15.6125,
         }
 
     def set_parameters(self, parameters, scan_task) -> bool:
@@ -105,13 +107,6 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         self.seq_file_path = self.get_working_folder() + "/seq/acq0.seq"
         log.info("Calculating sequence " + self.get_name())
 
-        fa_exc = cfg.DBG_FA_EXC
-        fa_ref = cfg.DBG_FA_REF
-        if "FA1" in scan_task.other:
-            fa_exc = int(scan_task.other["FA1"])
-        if "FA2" in scan_task.other:
-            fa_ref = int(scan_task.other["FA2"])
-
         make_rf_se.pypulseq_rfse(
             inputs={
                 "TE": self.param_TE,
@@ -119,8 +114,8 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
                 "NSA": self.param_NSA,
                 "ADC_samples": self.param_ADC_samples,
                 "ADC_duration": self.param_ADC_duration,
-                "FA1": fa_exc,
-                "FA2": fa_ref,
+                "FA1": 90,
+                "FA2": 180,
             },
             check_timing=True,
             output_file=self.seq_file_path,
@@ -132,12 +127,13 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
     def run_sequence(self, scan_task) -> bool:
         log.info("Running sequence " + self.get_name())
-
+        log.info("Running sequence at " + str(cfg.LARMOR_FREQ))
         # run_sequence_test("prescan_frequency")
 
         rxd, rx_t = run_pulseq(
             seq_file=self.seq_file_path,
-            rf_center=cfg.LARMOR_FREQ,
+            # rf_center=cfg.LARMOR_FREQ,
+            rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
             grad_t=10,
             tx_warmup=100,
@@ -151,38 +147,79 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
             gui_test=False,
             case_path=self.get_working_folder(),
         )
-        scan_task.adjustment.rf.larmor_frequency = cfg.LARMOR_FREQ
-
         log.info("Pulseq ran, plotting")
 
         self.rxd = rxd
+        log.info("Shape of rx data:", rxd.shape)
+        # Compute the average
+        rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
+        log.info("New shape of rx data:", rxd_rs.shape)
+        rxd_avg = (np.average(rxd_rs, axis=1))
+        log.info("Done running sequence " + self.get_name())
+        log.info("Plotting figures")
+        
+        plt.clf()
+        plt.title(f"ADC Signal")
+        plt.grid(True, color="#333")
+        log.info("Plotting averaged raw signal")
+        plt.plot(np.abs(rxd_avg))
+        
+        file = open(self.get_working_folder() + "/other/adc.plot", "wb")
+        fig = plt.gcf()
+        pickle.dump(fig, file)
+        file.close()
+        result = ResultItem()
+        result.name = "ADC"
+        result.description = "Acquired ADC signal"
+        result.type = "plot"
+        result.autoload_viewer = 1
+        result.file_path = "other/adc.plot"
+        scan_task.results.insert(0, result)
 
-        # Debug
-        Debug = True
-        if Debug is True:  # todo: debug mode
-            log.info("Plotting figure now")
-            # view_traj.view_sig(rxd)
+        plt.clf()
+        plt.title(f"FFT of Signal")
+        recon = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(rxd_avg)))
+        plt.grid(True, color="#333")
+        plt.plot(np.abs(recon))
+        file = open(self.get_working_folder() + "/other/fft.plot", "wb")
+        fig = plt.gcf()
+        pickle.dump(fig, file)
+        file.close()
+        result = ResultItem()
+        result.name = "FFT"
+        result.description = "FFT of ADC signal"
+        result.type = "plot"
+        result.autoload_viewer = 2
+        result.primary = True
+        result.file_path = "other/fft.plot"
+        scan_task.results.insert(1, result)
 
-            plt.clf()
-            plt.title("ADC Signal")
-            plt.grid(True, color="#333")
-            plt.plot(np.abs(rxd))
-            # if self.param_debug_plot:
-            #     plt.show()
+        # # Debug
+        # Debug = True
+        # if Debug is True:  # todo: debug mode
+        #     log.info("Plotting figure now")
+        #     # view_traj.view_sig(rxd)
 
-            file = open(self.get_working_folder() + "/other/rf_se.plot", "wb")
-            fig = plt.gcf()
-            pickle.dump(fig, file)
-            file.close()
+        #     plt.clf()
+        #     plt.title("ADC Signal")
+        #     plt.grid(True, color="#333")
+        #     plt.plot(np.abs(rxd))
+        #     # if self.param_debug_plot:
+        #     #     plt.show()
 
-            result = ResultItem()
-            result.name = "ADC"
-            result.description = "Recorded ADC signal"
-            result.type = "plot"
-            result.primary = True
-            result.autoload_viewer = 1
-            result.file_path = "other/rf_se.plot"
-            scan_task.results.append(result)
+        #     file = open(self.get_working_folder() + "/other/rf_se.plot", "wb")
+        #     fig = plt.gcf()
+        #     pickle.dump(fig, file)
+        #     file.close()
+
+        #     result = ResultItem()
+        #     result.name = "ADC"
+        #     result.description = "Recorded ADC signal"
+        #     result.type = "plot"
+        #     result.primary = True
+        #     result.autoload_viewer = 1
+        #     result.file_path = "other/rf_se.plot"
+        #     scan_task.results.append(result)
 
         log.info("Done running sequence " + self.get_name())
         return True

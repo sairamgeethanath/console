@@ -1,5 +1,4 @@
 from pathlib import Path
-
 import external.seq.adjustments_acq.config as cfg
 from external.seq.adjustments_acq.calibration import (
     larmor_cal,
@@ -10,7 +9,10 @@ from sequences.common.util import reading_json_parameter, writing_json_parameter
 from sequences import PulseqSequence  # type: ignore
 from sequences.common import make_rf_se  # type: ignore
 import common.logger as logger
-
+import matplotlib.pyplot as plt
+import numpy as np
+import pickle
+from common.types import ResultItem
 log = logger.get_logger()
 
 
@@ -31,7 +33,7 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
 
         scan_task.processing.recon_mode = "bypass"
         self.seq_file_path = self.get_working_folder() + "/seq/acq0.seq"
-
+        log.info('Working folder:'+ str(self.get_working_folder()))
         make_rf_se.pypulseq_rfse(
             inputs={
                 "TE": self.param_TE,
@@ -68,9 +70,9 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
             fig_snr_noise1,
         ) = larmor_step_search(
             seq_file=self.seq_file_path,
-            step_search_center=configuration_data.rf_parameters.larmor_frequency_MHz,
+            step_search_center=scan_task.adjustment.rf.larmor_frequency,
             steps=30,
-            step_bw_MHz=10e-3,
+            step_bw_MHz=5e-3,
             plot=True,  # For Debug
             shim_x=cfg.SHIM_X,
             shim_y=cfg.SHIM_Y,
@@ -78,6 +80,28 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
             delay_s=1,
             gui_test=False,
         )
+
+        rx_signal = data_dict["rx_arr"]
+        log.info('Read the signal')
+        log.info('Max freq:' + str(max_freq))
+        plt.clf()
+        plt.title("ADC Signal Final")
+        plt.grid(True, color="#333")
+        plt.plot(np.abs(rx_signal))
+        file = open(self.get_working_folder() + "/other/plot_snr_result_noise1.plot", "wb")
+        fig = plt.gcf()
+        pickle.dump(fig, file)
+        file.close()
+
+        result = ResultItem()
+        result.name = "ADC"
+        result.description = "Recorded ADC signal"
+        result.type = "plot"
+        result.primary = True
+        result.autoload_viewer = 1
+        result.file_path = "other/plot_snr_result_noise1.plot"
+        scan_task.results.append(result)
+
 
         plot_snr_result_signal1 = load_plot_in_ui(
             working_folder=working_folder,
@@ -102,7 +126,7 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
             seq_file=self.seq_file_path,
             step_search_center=max_snr_freq,
             steps=30,
-            step_bw_MHz=5e-3,
+            step_bw_MHz=10e-3,
             plot=True,  # For Debug
             shim_x=cfg.SHIM_X,
             shim_y=cfg.SHIM_Y,
@@ -146,7 +170,7 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
         calibrated_larmor_freq, data_dict, fig_snr2 = larmor_cal(
             seq_file=self.seq_file_path,
             larmor_start=larmor_freq,
-            iterations=10,
+            iterations=20,
             delay_s=1,
             echo_count=1,
             step_size=0.2,

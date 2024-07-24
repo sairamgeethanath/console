@@ -159,6 +159,7 @@ class Communicator(QObject, Helper):
             os.unlink(FIFO)
             os.mkfifo(FIFO)
 
+
     def _listen(self):
         while True:
             with open(self.in_file) as fifo:

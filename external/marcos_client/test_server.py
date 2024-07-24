@@ -12,7 +12,7 @@ import pdb
 
 st = pdb.set_trace
 
-from local_config import ip_address, port, fpga_clk_freq_MHz, grad_board
+from local_config2 import ip_address, port, fpga_clk_freq_MHz, grad_board
 from server_comms import *
 
 

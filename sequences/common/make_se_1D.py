@@ -24,14 +24,11 @@ def pypulseq_1dse(
     LARMOR_FREQ = cfg.LARMOR_FREQ
     RF_MAX = cfg.RF_MAX
     RF_PI2_FRACTION = cfg.RF_PI2_FRACTION
-    alpha1 = cfg.DBG_FA_EXC  # flip angle
+    alpha1 = 90  # flip angle
     alpha1_duration = rf_duration  # pulse duration
-    alpha2 = cfg.DBG_FA_REF  # refocusing flip angle
+    alpha2 = 180  # refocusing flip angle
     alpha2_duration = rf_duration  # pulse duration
-    # TE = 20e-3
-    # TR = 3000e-3
-    # num_averages = 1
-    # channel = "y"
+ 
     TR = inputs["TR"] / 1000  # ms to s
     TE = inputs["TE"] / 1000
     num_averages = inputs["NSA"]
@@ -40,11 +37,6 @@ def pypulseq_1dse(
     BW = inputs["BW"]
     channel = inputs["Gradient"]
 
-    # fov = 20e-3  # Define FOV and resolution - 37.5e-3
-    # Nx = 250
-    # BW = 64e3
-    # adc_dwell = 1 / BW
-    # adc_duration = 2.25e-3 # Nx * adc_dwell  # 6.4e-3
     prephaser_duration = 5e-3  # TODO: Need to define this behind the scenes and optimze
     rise_time = 250e-6  # dG = 200e-6 # Grad rise time
 
@@ -63,14 +55,15 @@ def pypulseq_1dse(
         grad_unit="mT/m",
         max_slew=4000,
         slew_unit="T/m/s",
-        # rf_ringdown_time=100e-6,
+        #rf_ringdown_time=100e-6,
         rf_ringdown_time=20e-6,
         rf_dead_time=100e-6,
         rf_raster_time=1e-6,
-        # adc_dead_time=10e-6,
+        #adc_dead_time=10e-6,
         adc_dead_time=20e-6,
     )
 
+    
     # ======
     # CREATE EVENTS
     # ======
@@ -89,8 +82,8 @@ def pypulseq_1dse(
         system=system,
         use="refocusing",
     )
-    # readout_time = 2.5e-3 + (2 * system.adc_dead_time)
-    readout_time = 8.0e-3 + (2 * system.adc_dead_time)
+    #readout_time = 2.5e-3 + (2 * system.adc_dead_time)
+    readout_time = 8.e-3 + (2 * system.adc_dead_time)
     delta_k = 1 / fov
     gx = pp.make_trapezoid(
         channel=channel,
@@ -141,10 +134,7 @@ def pypulseq_1dse(
     # ) * seq.grad_raster_time  # TODO: gradient delays need to be calibrated
 
     tau2 = (
-        math.ceil(
-            (TE / 2 - 0.5 * (pp.calc_duration(rf2) + pp.calc_duration(gx)))
-            / seq.grad_raster_time
-        )
+        math.ceil((TE / 2 - 0.5 * (pp.calc_duration(rf2) + pp.calc_duration(gx))) / seq.grad_raster_time)
     ) * seq.grad_raster_time
 
     delay_TR = TR - TE - (0.5 * readout_time)
@@ -169,7 +159,7 @@ def pypulseq_1dse(
         seq.add_block(gx, adc)  # Projection
         seq.add_block(pp.make_delay(delay_TR))
 
-    # seq.plot(time_range=[0, 2*TR])
+    seq.plot(time_range=[0, 2*TR])
     # seq.write("se_1D_local.seq")
 
     # Check whether the timing of the sequence is correct

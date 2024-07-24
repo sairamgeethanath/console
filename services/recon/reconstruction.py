@@ -8,7 +8,7 @@ import common.logger as logger
 from common.constants import *
 from common.types import ScanTask
 import services.recon.utils as utils
-
+import recon.recon_utils as ru
 from recon.kspaceFiltering.kspace_filtering import *
 from recon.B0Correction import B0Corrector
 import recon.DICOM.DICOM_utils as DICOM
@@ -103,14 +103,6 @@ def run_reconstruction_basic3d(folder: str, task: ScanTask) -> bool:
 
     fft = np.fft.fftshift(np.fft.fftn(np.fft.fftshift(kSpace)))
 
-    base_res = fft.shape[0]
-    for sample in range(0, base_res):
-        fft[sample, :, :] = fft[sample, :, :] * np.exp(
-            # np.pi * 1j + base_res / 16 * (sample - base_res / 2) / (2 * base_res) * np.pi * 1j
-            np.pi * 1j
-            + (sample - base_res / 2) / 32 * np.pi * 1j
-        )
-
     if task.processing.oversampling_read > 0:
         offset = int(dims[2]) / 4
         fft = fft[int(offset) : int(3 * offset), :, :]
@@ -127,24 +119,13 @@ def run_reconstruction_basic3d(folder: str, task: ScanTask) -> bool:
         name="k-Space",
         primary_result=False,
         autoload_viewer=2,
-        result_index=2,
-    )
-
-    DICOM.write_dicom(
-        np.angle(fft),
-        task,
-        folder + "/" + mri4all_taskdata.DICOM,
-        series_offset=2,
-        name="Phase",
-        primary_result=False,
-        result_index=3,
-        autoload_viewer=3,
+        result_index=1,
     )
 
     return True
 
 
-def run_reconstruction_cartesian(folder: str, task: ScanTask):
+def run_reconstruction_cartesian(folder: str, task: ScanTask)-> bool:
     """
     Runs the reconstruction pipeline for Cartesian sampling
     """
@@ -157,30 +138,42 @@ def run_reconstruction_cartesian(folder: str, task: ScanTask):
     kData = np.load(
         folder + "/" + mri4all_taskdata.RAWDATA + "/" + mri4all_scanfiles.RAWDATA
     )
-    kTraj = np.genfromtxt(
-        folder + "/" + mri4all_taskdata.RAWDATA + "/" + mri4all_scanfiles.TRAJ,
-        delimiter=",",
-    )  # pe_table a lot by 2 # check rotation
 
-    if kTraj.shape[0] > 2:
-        kTraj = np.rot90(kTraj)
-    # grad_delay_correction(kData, kTraj, delayT, param)
+    # Display k-space and image data
+    
 
-    filterType = "fermi"
-    kData = kFilter(kData, filterType, center_correction=True)
-    log.info(f"kSpace {filterType} filtering finished.")
+    # filter kspace data 
 
-    # Preform B0 correction and reconstruct the image
-    fname_B0_map = list(filter(lambda x: mri4all_scanfiles.BDATA in x, fnames))
-    Y = kData
-    kt = kTraj
-    df = np.load(path.join(folder, fname_B0_map[0])) if fname_B0_map else None
-    Lx = 1
-    nonCart = None
-    params = None
-    b0_corrector = B0Corrector(Y, kt, df, Lx, nonCart, params)
-    iData = b0_corrector()
-    log.info(f"B0 correction finished.")
+
+    iData = ru.centered_ifft(kData)
+
+
+
+    log.info("Reconstruction done!")
+    # kTraj = np.genfromtxt(
+    #     folder + "/" + mri4all_taskdata.RAWDATA + "/" + mri4all_scanfiles.TRAJ,
+    #     delimiter=",",
+    # )  # pe_table a lot by 2 # check rotation
+
+    # if kTraj.shape[0] > 2:
+    #     kTraj = np.rot90(kTraj)
+    # # grad_delay_correction(kData, kTraj, delayT, param)
+
+    # filterType = "fermi"
+    # kData = kFilter(kData, filterType, center_correction=True)
+    # log.info(f"kSpace {filterType} filtering finished.")
+
+    # # Preform B0 correction and reconstruct the image
+    # fname_B0_map = list(filter(lambda x: mri4all_scanfiles.BDATA in x, fnames))
+    # Y = kData
+    # kt = kTraj
+    # df = np.load(path.join(folder, fname_B0_map[0])) if fname_B0_map else None
+    # Lx = 1
+    # nonCart = None
+    # params = None
+    # b0_corrector = B0Corrector(Y, kt, df, Lx, nonCart, params)
+    # iData = b0_corrector()
+    # log.info(f"B0 correction finished.")
 
     # Denoise the image
     try:
@@ -193,10 +186,20 @@ def run_reconstruction_cartesian(folder: str, task: ScanTask):
         log.error(f"Image denoising failed.")
 
     # Create the DICOM file
-    DICOM.write_dicom(iData, task, folder + "/" + mri4all_taskdata.DICOM)
+    if len(iData.shape) < 3: # 2D case
+        log.info(iData.shape)
+        log.info('Reshaping image data')
+        sz = iData.shape
+        iData2 = np.zeros((sz[0], sz[1], 1), dtype=float)
+        iData2[:, :, 0] = iData
+    else:
+        iData2 = iData
+
+    DICOM.write_dicom(iData2, task, folder + "/" + mri4all_taskdata.DICOM)
     log.info(f"DICOM writting finished.")
 
     # Create the ISMRMRD file
     # TODO: Enable ISMRMRD creation after bug fix
-    create_ismrmrd(folder, kData, task)
-    log.info(f"ISMRMRD format writting finished.")
+    # create_ismrmrd(folder, kData, task)
+    # log.info(f"ISMRMRD format writting finished.")
+    return True
