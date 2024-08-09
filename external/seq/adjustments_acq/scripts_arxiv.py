@@ -15,8 +15,9 @@ from operator import itemgetter
 
 import external.seq.adjustments_acq.config as cfg  # pylint: disable=import-error
 import external.marcos_client.experiment as ex  # pylint: disable=import-error
-
-from external.flocra_pulseq.interpreter_pp import seq2flocra
+from external.flocra_pulseq.interpreter import (
+    PSInterpreter,
+)  # pylint: disable=import-error
 
 import common.helper as helper
 from common.constants import *
@@ -95,25 +96,67 @@ def run_pulseq(
 
     print(f"case path = {case_path}")
 
-    # Initialize the interpreter object and feed seq file or object
-    psi = seq2flocra(center_freq=rf_center * 1e6,
-                     rf_amp_max=rf_max)
-    psi.load_seqfile(seq_file)
-    psi.block_events_to_amps_times()
-    instructions = psi._flo_dict
-    
+    # Convert .seq file to machine dict
+    psi = PSInterpreter(
+        rf_center=rf_center * 1e6,
+        tx_warmup=tx_warmup,
+        rf_amp_max=rf_max,
+        tx_t=tx_t,
+        grad_t=grad_t,
+        gx_max=gx_max,
+        gy_max=gy_max,
+        gz_max=gz_max,
+        log_file=case_path + "/flocra",
+    )
+    instructions, param_dict = psi.interpret(seq_file)
+
+    # Shim
+    log.debug("Running shim function...")
+    instructions = shim(instructions, (shim_x, shim_y, shim_z))
+
+    # temp = instructions
+    # instructions = {
+    #     "tx0": temp["tx0"],
+    #     "tx1": temp["tx0"],  # DBG: Running the TX0 also on TX1 for testing purpose
+    #     "grad_vx": temp["grad_vx"],
+    #     "grad_vy": temp["grad_vy"],
+    #     "grad_vz": temp["grad_vz"],
+    #     "grad_vz2": temp["grad_vz2"],
+    #     "rx0_en": temp["rx0_en"],
+    #     "tx_gate": temp["tx_gate"],
+    # }
+    # print(instructions)
+
+    if plot_instructions:
+        plt.clf()
+        _, axs = plt.subplots(3, 1, sharex="col", constrained_layout=True)
+        for key in ["tx0"]:
+            axs[0].step(
+                instructions[key][0], abs(instructions[key][1]), where="post", label=key
+            )
+        for key in ["rx0_en"]:
+            axs[1].step(instructions[key][0], instructions[key][1], where="post", label=key)
+        for key in ["grad_vx", "grad_vy", "grad_vz", "grad_vz2"]:
+            axs[2].step(instructions[key][0], instructions[key][1], where="post", label=key)
+        for ax in axs:
+            ax.legend()
+            ax.grid(True, color="#333")
+
+    if hardware_simulation:
+        return [], []
+
     # Initialize experiment class
     if expt is None:
         log.debug("Initializing marcos client...")
         expt = ex.Experiment(
             lo_freq=rf_center,
-            rx_t=psi._rx_t,
+            rx_t=param_dict["rx_t"],
             init_gpa=True,
-            gpa_fhdo_offset_time= psi._grad_t / 3,
+            gpa_fhdo_offset_time=grad_t / 3,
             grad_max_update_rate=0.125,
             halt_and_reset=True,
         )
-    
+
     # Optionbally run gradient linearization calibration
     if grad_cal:
         expt.gradb.calibrate(
@@ -124,16 +167,12 @@ def run_pulseq(
             poly_degree=5,
         )
 
-    # Load instructions
-    # instructions = {
-    #     "tx0": psi._flo_dict['tx0'],
-    #     "tx_gate": psi._flo_dict['tx_gate'],
-    #     "rx0_en": psi._flo_dict['rx0_en'],  # adc 0
-    #     "grad_vx": psi._flo_dict['grad_vx'],
-    #     "grad_vy": psi._flo_dict['grad_vy'],
-    #     "grad_vz": psi._flo_dict['grad_vz'],
-    #     }
+    # Add flat delay to avoid housekeeping at the start
+    flat_delay = 10
+    for buf in instructions.keys():
+        instructions[buf] = (instructions[buf][0] + flat_delay, instructions[buf][1])
 
+    # Load instructions
     expt.add_flodict(instructions)
 
     # if plot_instructions:
@@ -145,22 +184,19 @@ def run_pulseq(
         ipc_comm.send_acq_data(helper.get_datetime(), expected_duration_sec, False)
 
     # Run experiment
-   
-    log.debug('instructions:.......')
-    log. debug(instructions)
-
     rxd, msgs = expt.run()
-    log.info('rxd shape:', rxd["rx0"].shape)
 
     # Optionally save messages
     if save_msgs:
-        log.debug("Received messages:")
-        log.debug("---")
-        log.debug(msgs)  # TODO include message saving
-        log.debug("---")
+        print("Received messages:")
+        print("---")
+        print(msgs)  # TODO include message saving
+        print("---")
 
     # Announce completion
-    
+    nSamples = param_dict["readout_number"]
+    log.debug(f"Finished -- read {nSamples} samples")
+
     if not raw_filename:
         from datetime import datetime
 
@@ -186,7 +222,7 @@ def run_pulseq(
     expt.__del__()
 
     # Return rx output array and rx period
-    return rxd["rx0"], psi._rx_t
+    return rxd["rx0"], param_dict["rx_t"]
 
 
 def shim(instructions, shim):
@@ -398,9 +434,9 @@ if __name__ == "__main__":
             if len(sys.argv) == 3:
                 seq_file = cfg.SEQ_PATH + sys.argv[2]
                 _, rx_t = run_pulseq(seq_file, save_np=True, save_mat=True)
-                log.debug(f"rx_t = {rx_t}")
+                print(f"rx_t = {rx_t}")
             else:
-                log.debug(
+                print(
                     '"pulseq" takes one .seq filename as an argument (just the filename, make sure it\'s in your seq_files path!)'
                 )
         elif command == "plot2d":
@@ -409,7 +445,7 @@ if __name__ == "__main__":
                 tr_count = int(sys.argv[3])
                 plot_signal_2d(recon_2d(rxd, tr_count, larmor_freq=cfg.LARMOR_FREQ))
             else:
-                log.debug('Format arguments as "plot2d [2d_data_filename] [tr count]"')
+                print('Format arguments as "plot2d [2d_data_filename] [tr count]"')
         elif command == "plot1d":
             if len(sys.argv) == 5:
                 rxd = np.load(cfg.DATA_PATH + sys.argv[2])
@@ -417,7 +453,7 @@ if __name__ == "__main__":
                 tr_count = int(sys.argv[4])
                 plot_signal_1d(recon_1d(rxd, rx_t, trs=tr_count))
             else:
-                log.debug(
+                print(
                     'Format arguments as "plot1d [1d_data_filename] [rx_t] [tr_count]"'
                 )
         elif command == "plot_se":
@@ -427,11 +463,11 @@ if __name__ == "__main__":
                 tr_count = int(sys.argv[4])
                 plot_signal_1d(recon_0d(rxd, rx_t, trs=tr_count))
             else:
-                log.debug(
+                print(
                     'Format arguments as "plot_se [spin_echo_data_filename] [rx_t] [tr_count]"'
                 )
 
         else:
-            log.debug("Enter a script command from: [pulseq, plot_se, plot1d, plot2d]")
+            print("Enter a script command from: [pulseq, plot_se, plot1d, plot2d]")
     else:
-        log.debug("Enter a script command from: [pulseq, plot_se, plot1d, plot2d]")
+        print("Enter a script command from: [pulseq, plot_se, plot1d, plot2d]")
