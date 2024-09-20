@@ -109,7 +109,7 @@ class SequenceFID(PulseqSequence, registry_key=Path(__file__).stem):
 
         rxd, rx_t = run_pulseq(
             seq_file=self.seq_file_path,
-            rf_center=cfg.LARMOR_FREQ,
+            rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
             grad_t=10,
             tx_warmup=100,
@@ -127,9 +127,9 @@ class SequenceFID(PulseqSequence, registry_key=Path(__file__).stem):
 
         log.info("Plotting results...")
         plt.clf()
-        plt.title("ADC Signal")
+        plt.title("FFT of ADC Signal")
         plt.grid(True, color="#333")
-        plt.plot(np.abs(rxd))
+        plt.plot(np.abs((rxd)))
 
         file = open(self.get_working_folder() + "/other/fid.plot", "wb")
         fig = plt.gcf()

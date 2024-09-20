@@ -176,11 +176,11 @@ class seq2flocra:
                     tx0_gate_time = np.round(np.concatenate((tx0_gate_time, np.array([tx0_pulse_time[0] - self._tx_warmup, tx0_pulse_time[-1] + self._system.rf_ringdown_time]))), decimals = 6)  
           
             if block.adc is not None:
-                log.info('prescribed dwell time:', block.adc.dwell)
+                # log.info('prescribed dwell time:', block.adc.dwell)
                 self._rx_div = np.round(block.adc.dwell / self._clk_t).astype(int)
                 self._rx_t = self._clk_t * self._rx_div
                 rx_t_debug = self._rx_t
-                log.info('rx_t:', rx_t_debug)
+                # log.info('rx_t:', rx_t_debug)
 
                 # log.info(self._rx_div * self._clk_t, '!= dwell')
                 # log.info('Dwell time', block.adc.dwell, 'rounded to:', self._rx_t)
@@ -188,7 +188,7 @@ class seq2flocra:
                 rx0_start = block_duration + np.max([block.adc.dead_time, block.adc.delay])
                 # rx0_start = block_duration + block.adc.dead_time + block.adc.delay # pp does this, why? TODO: Figure out adc in Sequence block_durations: could be a bug
                 rx0_end = rx0_start + (block.adc.num_samples * self._rx_t) 
-                log.info('rx_time:', (rx0_end - rx0_start)* 1e6)
+                log.debug('rx_time:', (rx0_end - rx0_start)* 1e6)
 
                 rx0_gate_amp = np.concatenate((rx0_gate_amp, np.array([1.0, 0.0])))
                 rx0_gate_time = np.concatenate((rx0_gate_time,np.array([rx0_start, rx0_end])))
