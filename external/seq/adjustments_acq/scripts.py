@@ -81,7 +81,6 @@ def run_pulseq(
         float: (us) Rx period
     """
     log.info(f"Pulseq scan with Larmor {rf_center}")
-
     log.debug("Running flocra_pulseq using following parameters:")
     log.debug(f"rf_center={rf_center}")
     log.debug(f"rf_max={rf_max}")
@@ -147,10 +146,10 @@ def run_pulseq(
     # Run experiment
    
     log.debug('instructions:.......')
-    log. debug(instructions)
+    # log.debug(instructions)
 
     rxd, msgs = expt.run()
-    log.info('rxd shape:', rxd["rx0"].shape)
+    # log.info('rxd shape:', rxd["rx0"].shape)
 
     # Optionally save messages
     if save_msgs:

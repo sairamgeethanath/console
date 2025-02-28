@@ -216,7 +216,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         data = rxd_avg #rxd_avg.reshape((self.param_Base_Resolution, 2 * self.param_Base_Resolution))
         log.info("Plotting figures")
         
-        kspace_filter = True
+        kspace_filter = False
 
         if kspace_filter is True:
             shape = data.shape
@@ -255,6 +255,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title(f"Image data")
         # recon = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(data)))
         recon = np.fft.fftshift(np.fft.fft2(data))
+
         # plt.grid(True, color="#333")
         half_width = int(self.param_Base_Resolution / 2)
         recon2 = np.squeeze(recon[:, half_width:self.param_Base_Resolution + half_width])
@@ -273,31 +274,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         result.file_path = "other/fft.plot"
         scan_task.results.insert(1, result)
 
-        # plt.figure()
-        # plt.subplot(131)
-        # plt.imshow(np.abs(data))
-        # plt.title("kspace, abs")
-        # plt.subplot(132)
-        # plt.imshow(np.real(data))
-        # plt.title("real")
-        # plt.subplot(133)
-        # plt.imshow(np.imag(data))
-        # plt.title("imag")
-        # plt.show()
-
-        # img = np.fft.fft2(data)
-        # plt.figure()
-        # plt.subplot(131)
-        # plt.imshow(np.abs(img))
-        # plt.title("image, abs")
-        # plt.subplot(132)
-        # plt.imshow(np.real(img))
-        # plt.title("real")
-        # plt.subplot(133)
-        # plt.imshow(np.imag(img))
-        # plt.title("imag")
-        # plt.show()
-
+        
         # save the raw data file
         self.raw_file_path = self.get_working_folder() + "/rawdata/raw.npy"
         np.save(self.raw_file_path, data)
