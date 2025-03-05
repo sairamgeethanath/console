@@ -10,7 +10,7 @@ log = logger.get_logger()
 
 
 def pypulseq_1dse(
-    inputs=None, check_timing=True, output_file="", rf_duration=50e-6
+    inputs=None, check_timing=True, output_file="", rf_duration=100e-6
 ) -> bool:
     if not output_file:
         log.error("No output file specified")
@@ -20,10 +20,9 @@ def pypulseq_1dse(
     # DEFAULTS FROM CONFIG FILE              TODO: MOVE DEFAULTS TO UI
     # ======
     #   ======
-    rf_duration = 100e-6
-    LARMOR_FREQ = cfg.LARMOR_FREQ
-    RF_MAX = cfg.RF_MAX
-    RF_PI2_FRACTION = cfg.RF_PI2_FRACTION
+    # LARMOR_FREQ = cfg.LARMOR_FREQ
+    # RF_MAX = cfg.RF_MAX
+    # RF_PI2_FRACTION = cfg.RF_PI2_FRACTION
     alpha1 = 90  # flip angle
     alpha1_duration = rf_duration  # pulse duration
     alpha2 = 180  # refocusing flip angle
@@ -32,7 +31,7 @@ def pypulseq_1dse(
     TR = inputs["TR"] / 1000  # ms to s
     TE = inputs["TE"] / 1000
     num_averages = inputs["NSA"]
-    fov = inputs["FOV"] / 1000
+    fov = inputs["FOV"] / 1000 # mm to m
     Nx = inputs["Base_Resolution"]
     BW = inputs["BW"]
     channel = inputs["Gradient"]
@@ -83,7 +82,7 @@ def pypulseq_1dse(
         use="refocusing",
     )
     #readout_time = 2.5e-3 + (2 * system.adc_dead_time)
-    readout_time = 8.e-3 + (2 * system.adc_dead_time)
+    readout_time = (Nx / BW) + (2 * system.adc_dead_time)
     delta_k = 1 / fov
     gx = pp.make_trapezoid(
         channel=channel,
@@ -121,18 +120,6 @@ def pypulseq_1dse(
         )
     ) * seq.grad_raster_time
 
-    # tau2 = (
-    #     math.ceil(
-    #         (
-    #             TE / 2
-    #             - 0.5 * (pp.calc_duration(rf2))
-    #             - pp.calc_duration(gx_pre)
-    #             - 2 * rise_time
-    #         )
-    #         / seq.grad_raster_time
-    #     )
-    # ) * seq.grad_raster_time  # TODO: gradient delays need to be calibrated
-
     tau2 = (
         math.ceil((TE / 2 - 0.5 * (pp.calc_duration(rf2) + pp.calc_duration(gx))) / seq.grad_raster_time)
     ) * seq.grad_raster_time
@@ -158,9 +145,6 @@ def pypulseq_1dse(
         seq.add_block(pp.make_delay(tau2))
         seq.add_block(gx, adc)  # Projection
         seq.add_block(pp.make_delay(delay_TR))
-
-    seq.plot(time_range=[0, 2*TR])
-    # seq.write("se_1D_local.seq")
 
     # Check whether the timing of the sequence is correct
     check_timing = True

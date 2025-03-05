@@ -81,16 +81,16 @@ def run_pulseq(
         float: (us) Rx period
     """
     log.info(f"Pulseq scan with Larmor {rf_center}")
-    log.debug("Running flocra_pulseq using following parameters:")
-    log.debug(f"rf_center={rf_center}")
-    log.debug(f"rf_max={rf_max}")
-    log.debug(f"gx_max={gx_max}")
-    log.debug(f"gy_max={gy_max}")
-    log.debug(f"gz_max={gz_max}")
-    log.debug(f"shim_x={shim_x}")
-    log.debug(f"shim_y={shim_y}")
-    log.debug(f"shim_z={shim_z}")
-    log.debug(f"Seq file={seq_file}")
+    log.info("Running flocra_pulseq using following parameters:")
+    log.info(f"rf_center={rf_center}")
+    log.info(f"rf_max={rf_max}")
+    log.info(f"gx_max={gx_max}")
+    log.info(f"gy_max={gy_max}")
+    log.info(f"gz_max={gz_max}")
+    log.info(f"shim_x={shim_x}")
+    log.info(f"shim_y={shim_y}")
+    log.info(f"shim_z={shim_z}")
+    log.info(f"Seq file={seq_file}")
 
     print(f"case path = {case_path}")
 

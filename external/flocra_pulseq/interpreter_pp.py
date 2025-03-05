@@ -188,7 +188,7 @@ class seq2flocra:
                 rx0_start = block_duration + np.max([block.adc.dead_time, block.adc.delay])
                 # rx0_start = block_duration + block.adc.dead_time + block.adc.delay # pp does this, why? TODO: Figure out adc in Sequence block_durations: could be a bug
                 rx0_end = rx0_start + (block.adc.num_samples * self._rx_t) 
-                log.info('rx_time:', (rx0_end - rx0_start)* 1e6)
+                # log.info('rx_time:', (rx0_end - rx0_start)* 1e6)
 
                 rx0_gate_amp = np.concatenate((rx0_gate_amp, np.array([1.0, 0.0])))
                 rx0_gate_time = np.concatenate((rx0_gate_time,np.array([rx0_start, rx0_end])))
@@ -254,8 +254,8 @@ class seq2flocra:
             rx0_gate_amp_cat = [0.0]
             rx0_gate_time_cat =[0.0]
         
-        log.info('Obtained amplitudes and times for all blocks')
-        log.info('Making the flodict: six lines to the spectrometer')
+        # log.info('Obtained amplitudes and times for all blocks')
+        # log.info('Making the flodict: six lines to the spectrometer')
         
         flo_dict = dict()
         # Tx - gate and first channel

@@ -192,6 +192,7 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
 
         # updating the Larmor frequency in the config.json file
         configuration_data.rf_parameters.larmor_frequency_MHz = calibrated_larmor_freq
+        scan_task.adjustment.rf.larmor_frequency = calibrated_larmor_freq
         writing_json_parameter(config_data=configuration_data)
         # Reload the configuration -- otherwise it does not get updated until the next start
         cfg.update()

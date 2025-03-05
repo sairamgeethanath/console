@@ -22,11 +22,11 @@ log = logger.get_logger()
 
 class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 50
+    param_TE: int = 12
     param_TR: int = 3000
     param_NSA: int = 1
-    param_FOV: int = 20
-    param_Base_Resolution: int = 96
+    param_FOV: int = 50
+    param_Base_Resolution: int = 256
     param_BW: int = 32000
     param_Gradient: str = "x"
     param_debug_plot: bool = True
@@ -59,10 +59,10 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 50,
+            "TE": 12,
             "TR": 1000,
             "NSA": 1,
-            "FOV": 15,
+            "FOV": 50,
             "Base_Resolution": 256,
             "BW": 32000,
             "Gradient": "x",
@@ -163,9 +163,9 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         log.info("Running sequence " + self.get_name())
         iterations = 1
         for iter in range(iterations):
-            rxd, rx_t = run_pulseq(
+            rxd, _ = run_pulseq(
                 seq_file=self.seq_file_path,
-                rf_center=scan_task.adjustment.rf.larmor_frequency,
+                rf_center=cfg.LARMOR_FREQ, #scan_task.adjustment.rf.larmor_frequency,
                 tx_t=1,
                 grad_t=10,
                 tx_warmup=100,
@@ -190,7 +190,13 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title(f"ADC Signal - Grad_{self.param_Gradient}")
         plt.grid(True, color="#333")
         log.info("Plotting averaged raw signal")
-        plt.plot(np.abs(rxd_avg))
+        dt = 1e6 / self.param_BW
+        log.info("dt: ", dt)
+        
+        t = np.arange(0, self.param_Base_Resolution * dt, dt).T
+        plt.plot(t, np.abs(rxd_avg))
+        plt.xlabel('Time (us)')
+        plt.ylabel('Signal')
         
         file = open(self.get_working_folder() + "/other/adc.plot", "wb")
         fig = plt.gcf()
@@ -208,7 +214,10 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title(f"FFT of Signal - Grad_{self.param_Gradient}")
         recon = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(rxd_avg)))
         plt.grid(True, color="#333")
-        plt.plot(np.abs(recon))
+        r = np.linspace(-self.param_FOV/2, self.param_FOV/2, self.param_Base_Resolution)
+        plt.plot(r, np.abs(recon))
+        plt.xlabel("Position (mm)")
+        plt.ylabel("Projection")
         file = open(self.get_working_folder() + "/other/fft.plot", "wb")
         fig = plt.gcf()
         pickle.dump(fig, file)

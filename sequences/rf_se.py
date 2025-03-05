@@ -127,12 +127,12 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
     def run_sequence(self, scan_task) -> bool:
         log.info("Running sequence " + self.get_name())
-        log.info("Running sequence at " + str(cfg.LARMOR_FREQ))
+        
         # run_sequence_test("prescan_frequency")
 
-        rxd, rx_t = run_pulseq(
+        rxd, _ = run_pulseq(
             seq_file=self.seq_file_path,
-            rf_center=cfg.LARMOR_FREQ,
+            rf_center=cfg.LARMOR_FREQ, # scan_task.adjustment.rf.larmor_frequency,
             # rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
             grad_t=10,
@@ -153,9 +153,10 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         log.info("Shape of rx data:", rxd.shape)
         # Compute the average
         rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
-        log.info("New shape of rx data:", rxd_rs.shape)
+        # log.info("New shape of rx data:", rxd_rs.shape)
         rxd_avg = (np.average(rxd_rs, axis=1))
         log.info("Done running sequence " + self.get_name())
+        log.info("Ran sequence at " + str(cfg.LARMOR_FREQ) + " MHz")
         log.info("Plotting figures")
         
         plt.clf()
