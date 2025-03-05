@@ -414,7 +414,7 @@ def rf_max_cal(
 
     # Cap search values to not hit system limits
     rf_min, rf_max = 0.05, 0.95
-    rf_max_val = 0
+    rf_max_val = 0  
 
     # Run iterative search
     for it in range(iterations):
@@ -428,7 +428,11 @@ def rf_max_cal(
         # Repeatedly run the experiment from seq file
         for i in range(points):
             # Cap rf value if needed for system
-            adj_rf_max = max(cfg.RF_MAX * cfg.RF_PI2_FRACTION, 5000) / rf_amp_vals[i]
+            print(f"{rf_amp_vals[i]:.4f}  ({i}/{points})")
+            ipc_comm.send_status(
+            f"Adjusting amplitude:  Searching {rf_amp_vals[i]:.4f}  ({i+1}/{points})"
+            )
+            adj_rf_max = max(cfg.RF_MAX * cfg.RF_PI2_FRACTION, cfg.RF_MAX) / rf_amp_vals[i]
             rxd, rx_t = scr.run_pulseq(
                 seq_file,
                 rf_center=larmor_freq,
@@ -479,8 +483,9 @@ def rf_max_cal(
         else:
             max_ind = np.argmax(peak_max_arr)
         rf_max_val = rf_amp_vals[max_ind]
-
+        print(f"Estimated RF max: {rf_max_val:.2f} fractional power")
         # Plot if asked
+        plot = False
         if plot and it < iterations - 1:
             fig, axs = plt.subplots(2, 1, constrained_layout=True)
             fig.suptitle(f"Iteration {it + 1}/{iterations}")
@@ -510,6 +515,7 @@ def rf_max_cal(
     )
 
     # Plot if asked
+    plot = False
     if plot:
         fig, axs = plt.subplots(2, 1, constrained_layout=True)
         fig.suptitle(f"Iteration {it + 1}/{iterations}")
@@ -531,6 +537,8 @@ def rf_max_cal(
         "rx_t": rx_t,
         "rxd_list": rxd_list,
         "rf_max": est_rf_max,
+        "peak_max_arr": peak_max_arr,
+        "rf_amp_vals": rf_amp_vals,
     }
 
     return est_rf_max, rf_pi2_fraction, data_dict
@@ -543,7 +551,7 @@ def rf_duration_cal(
     smooth=True,
     iterations=2,
     first_max=False,
-    plot=True,
+    plot=False,
 ):
     """
     Calibrate RF optimal duration for pi/2 flip angle
@@ -658,7 +666,7 @@ def rf_duration_cal(
         plt.ioff()
         plt.show()
 
-    return rf_optimal_duration_val
+    return rf_optimal_duration_val, rf_duration_vals, peak_max_arr
 
 
 # TODO Add gui test functionality

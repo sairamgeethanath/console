@@ -215,7 +215,7 @@ class SequenceFID(PulseqSequence, registry_key=Path(__file__).stem):
         output_file = self.seq_file_path
 
         alpha1 = self.param_FA
-        alpha1_duration = 200e-6
+        alpha1_duration = 50e-6
 
         adc_num_samples = self.param_ADC_samples
         adc_duration = self.param_ADC_duration / 1e6  # us to s
@@ -245,7 +245,7 @@ class SequenceFID(PulseqSequence, registry_key=Path(__file__).stem):
         # ======
 
         rf1 = pp.make_block_pulse(
-            flip_angle=alpha1 * math.pi / 180,
+            flip_angle =  alpha1 * math.pi / 180, # change this back by removing the 2
             duration=alpha1_duration,
             delay=0e-6,
             system=system,

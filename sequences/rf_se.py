@@ -132,8 +132,8 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
         rxd, rx_t = run_pulseq(
             seq_file=self.seq_file_path,
-            # rf_center=cfg.LARMOR_FREQ,
-            rf_center=scan_task.adjustment.rf.larmor_frequency,
+            rf_center=cfg.LARMOR_FREQ,
+            # rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
             grad_t=10,
             tx_warmup=100,
@@ -162,7 +162,14 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title(f"ADC Signal")
         plt.grid(True, color="#333")
         log.info("Plotting averaged raw signal")
-        plt.plot(np.abs(rxd_avg))
+        dt = self.param_ADC_duration / self.param_ADC_samples
+        log.info("dt: ", dt)
+        log.info(self.param_ADC_duration)
+        t = np.arange(0, self.param_ADC_duration, dt).T
+        plt.plot(t, np.abs(rxd_avg))
+        # plt.plot(np.abs(rxd_avg))
+        plt.xlabel('Time [us]')
+        plt.ylabel('Signal')
         
         file = open(self.get_working_folder() + "/other/adc.plot", "wb")
         fig = plt.gcf()
@@ -180,7 +187,15 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title(f"FFT of Signal")
         recon = np.fft.fftshift(np.fft.ifft(np.fft.fftshift(rxd_avg)))
         plt.grid(True, color="#333")
-        plt.plot(np.abs(recon))
+        # dt is already in us so no need to convert
+        df = 1 / (self.param_ADC_duration)
+        f =  1e3 * np.arange(-1 / (2 * dt), 1 / (2 * dt), df).T
+        log.info("df: ", df)
+        log.info("f shape: ", f.shape)
+        log.info("recon shape: ", recon.shape)
+        plt.plot(f, np.abs(recon))
+        plt.xlabel('Frequency [kHz]')    
+        plt.ylabel('Signal')
         file = open(self.get_working_folder() + "/other/fft.plot", "wb")
         fig = plt.gcf()
         pickle.dump(fig, file)

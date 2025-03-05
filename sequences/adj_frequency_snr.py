@@ -26,7 +26,7 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
 
     @classmethod
     def get_readable_name(self) -> str:
-        return "Adjust Frequency (SNR)"
+        return "Adjust Frequency (SNR) [on startup]"
 
     def calculate_sequence(self, scan_task) -> bool:
         log.info("Calculating sequence " + self.get_name())
@@ -88,6 +88,8 @@ class AdjFrequency(PulseqSequence, registry_key=Path(__file__).stem):
         plt.title("ADC Signal Final")
         plt.grid(True, color="#333")
         plt.plot(np.abs(rx_signal))
+        plt.xlabel("Time [n]")
+        plt.ylabel("Amplitude [a.u.]")
         file = open(self.get_working_folder() + "/other/plot_snr_result_noise1.plot", "wb")
         fig = plt.gcf()
         pickle.dump(fig, file)

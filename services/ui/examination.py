@@ -1374,7 +1374,7 @@ class ExaminationWindow(QMainWindow):
     def store_seqparam_from_ui(self, scan_task):
         scan_task.adjustment.rf.larmor_frequency = self.TX_Freq_DoubleSpinBox.value()
         configuration_data = reading_json_parameter()
-        configuration_data.rf_parameters.larmor_frequency_MHz = scan_task.adjustment.rf.larmor_frequency * 1e6
+        configuration_data.rf_parameters.larmor_frequency_MHz = scan_task.adjustment.rf.larmor_frequency
         writing_json_parameter(config_data=configuration_data)
         # Reload the configuration -- otherwise it does not get updated until the next start
         cfg.update()

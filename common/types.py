@@ -114,7 +114,7 @@ class AdjustmentShim(BaseModel):
 
 
 class AdjustmentRF(BaseModel):
-    larmor_frequency: float = 15.58
+    larmor_frequency: float = 11.4725
     rf_max_amplitude: float = 7661.29
     rf_pi2_fraction: float = 0.6744
 
