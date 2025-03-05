@@ -24,9 +24,9 @@ def pypulseq_rfse(
     RF_MAX = cfg.RF_MAX
     RF_PI2_FRACTION = cfg.RF_PI2_FRACTION
     alpha1 =  inputs["FA1"]  # flip angle # need to remove this two factor
-    alpha1_duration = 100e-6 #rf_duration  # pulse duration
+    alpha1_duration = rf_duration  # pulse duration
     alpha2 = inputs["FA2"]  # refocusing flip angle
-    alpha2_duration = 100e-6 #rf_duration  # pulse duration
+    alpha2_duration = rf_duration  # pulse duration
 
     TR = inputs["TR"] / 1000  # ms to s
     TE = inputs["TE"] / 1000
