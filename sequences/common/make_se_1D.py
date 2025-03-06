@@ -10,9 +10,10 @@ log = logger.get_logger()
 
 
 def pypulseq_1dse(
-    inputs=None, check_timing=True, output_file="", rf_duration=100e-6
-) -> bool:
+    inputs=None, check_timing=True, output_file="", system=None, rf_duration=100e-6
+):
     if not output_file:
+        log.info("No output file specified")
         log.error("No output file specified")
         return False
 
@@ -34,9 +35,11 @@ def pypulseq_1dse(
     fov = inputs["FOV"] / 1000 # mm to m
     Nx = inputs["Base_Resolution"]
     BW = inputs["BW"]
+    adc_dwell = 1 / BW
     channel = inputs["Gradient"]
+    system = inputs["system"]
 
-    prephaser_duration = 5e-3  # TODO: Need to define this behind the scenes and optimze
+    
     rise_time = 250e-6  # dG = 200e-6 # Grad rise time
 
     # ======
@@ -48,21 +51,29 @@ def pypulseq_1dse(
     # ======
     # SET SYSTEM CONFIG TODO --> ?
     # ======
+    # if channel == "x":
+    #     max_grad = cfg.GX_MAX
+    # elif channel == "y":
+    #     max_grad = cfg.GY_MAX
+    # elif channel == "z":
+    #     max_grad = cfg.GZ_MAX
 
-    system = pp.Opts(
-        max_grad=200,
-        grad_unit="mT/m",
-        max_slew=4000,
-        slew_unit="T/m/s",
-        #rf_ringdown_time=100e-6,
-        rf_ringdown_time=20e-6,
-        rf_dead_time=100e-6,
-        rf_raster_time=1e-6,
-        #adc_dead_time=10e-6,
-        adc_dead_time=20e-6,
-    )
 
-    
+    # system = pp.Opts(
+    #     max_grad=max_grad,  
+    #     grad_unit="Hz/m", # 
+    #     max_slew=1000,
+    #     slew_unit="T/m/s",
+    #     #rf_ringdown_time=100e-6,
+    #     rf_ringdown_time=20e-6,
+    #     rf_dead_time=100e-6,
+    #     rf_raster_time=1e-6,
+    #     #adc_dead_time=10e-6,
+    #     adc_dead_time=20e-6,
+    #     grad_raster_time = adc_dwell,
+    # )
+
+
     # ======
     # CREATE EVENTS
     # ======
@@ -81,8 +92,9 @@ def pypulseq_1dse(
         system=system,
         use="refocusing",
     )
-    #readout_time = 2.5e-3 + (2 * system.adc_dead_time)
+    
     readout_time = (Nx / BW) + (2 * system.adc_dead_time)
+    prephaser_duration = 0.5 * readout_time
     delta_k = 1 / fov
     gx = pp.make_trapezoid(
         channel=channel,
@@ -91,6 +103,8 @@ def pypulseq_1dse(
         rise_time=rise_time,
         system=system,
     )
+    log.info("**Gradient amplitude**: ", gx.amplitude)
+
     gx_pre = pp.make_trapezoid(
         channel=channel,
         area=gx.area / 2,
@@ -134,9 +148,6 @@ def pypulseq_1dse(
     # ======
     # Loop over phase encodes and define sequence blocks
 
-    # gx_pre.amplitude = 0
-    # gx.amplitude = 0
-
     for avg in range(num_averages):
         seq.add_block(rf1)
         seq.add_block(gx_pre)
@@ -147,7 +158,7 @@ def pypulseq_1dse(
         seq.add_block(pp.make_delay(delay_TR))
 
     # Check whether the timing of the sequence is correct
-    check_timing = True
+    check_timing = False
     if check_timing:
         ok, error_report = seq.check_timing()
         if ok:
@@ -155,7 +166,7 @@ def pypulseq_1dse(
         else:
             print("Timing check failed. Error listing follows:")
             [print(e) for e in error_report]
-
+    
     log.debug(output_file)
     try:
         seq.write(output_file)
@@ -163,5 +174,5 @@ def pypulseq_1dse(
     except:
         log.error("Could not write sequence file")
         return False
-
+    
     return True

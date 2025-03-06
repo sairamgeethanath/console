@@ -69,15 +69,15 @@ def pypulseq_se2D(
     # ======
 
     system = pp.Opts(
-        max_grad=200,
-        grad_unit="mT/m",
+        max_grad=1e7,
+        grad_unit="Hz/m",
         max_slew=4000,
         slew_unit="T/m/s",
         rf_ringdown_time=20e-6,
         rf_dead_time=100e-6,
         rf_raster_time=1e-6,
         adc_dead_time=20e-6,
-        grad_raster_time=10e-6,
+        grad_raster_time= adc_dwell # should be equal to adc raster time
     )
 
     # ======

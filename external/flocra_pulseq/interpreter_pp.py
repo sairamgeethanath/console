@@ -56,11 +56,17 @@ class seq2flocra:
         self._tx_zero_end = tx_zero_end
         self._debug_log = debug_log
         self._system = system
-        
+
+        if system is not None:
+            log.info("**System defined**:", self._system)
+        else:
+            log.info("**System not defined, using defaults**")
+            self._system = None
+
         # This seq system needs to be point of full control - simplifies config significantly; TODO:: simplify config using the pp.Opts()
         if self._system is None:
             self._system = pp.Opts(
-                max_grad=1e7,
+                max_grad=1e7, # this should come from the config file
                 grad_unit="Hz/m",
                 # max_slew=130,
                 # slew_unit="T/m/s",
@@ -123,6 +129,7 @@ class seq2flocra:
         for block_counter in self._seq.block_events:
             block = self._seq.get_block(block_counter)
             if block.gx is not None:
+                log.info('gx max:', self._system.max_grad)
                 if block.gx.type == 'trap':
                     grad_vx_amp = np.concatenate((grad_vx_amp, [0, block.gx.amplitude / self._system.max_grad, block.gx.amplitude / self._system.max_grad, 0]))
                     grad_vx_time = np.concatenate((grad_vx_time, block_duration + [0, block.gx.rise_time, block.gx.rise_time + block.gx.flat_time, block.gx.rise_time + block.gx.flat_time + block.gx.fall_time ]))

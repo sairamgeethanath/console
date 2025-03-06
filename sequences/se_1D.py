@@ -4,14 +4,11 @@ import math
 import numpy as np
 import matplotlib.pyplot as plt
 import pickle
-
 from common.types import ResultItem
 from PyQt5 import uic
-
 import pypulseq as pp  # type: ignore
 import external.seq.adjustments_acq.config as cfg
 from external.seq.adjustments_acq.scripts import run_pulseq
-
 from sequences import PulseqSequence
 from sequences.common import make_se_1D
 import common.logger as logger
@@ -22,12 +19,12 @@ log = logger.get_logger()
 
 class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 12
-    param_TR: int = 3000
+    param_TE: int = 3
+    param_TR: int = 1000
     param_NSA: int = 1
-    param_FOV: int = 50
-    param_Base_Resolution: int = 256
-    param_BW: int = 32000
+    param_FOV: int = 64
+    param_Base_Resolution: int = 128
+    param_BW: int = 64000
     param_Gradient: str = "x"
     param_debug_plot: bool = True
 
@@ -59,12 +56,12 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 12,
+            "TE": 3,
             "TR": 1000,
             "NSA": 1,
-            "FOV": 50,
-            "Base_Resolution": 256,
-            "BW": 32000,
+            "FOV": 64,
+            "Base_Resolution": 128,
+            "BW": 64000,
             "Gradient": "x",
         }
 
@@ -111,14 +108,37 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
             self.problem_list.append("TE cannot be longer than TR")
         return self.is_valid()
 
-    def calculate_sequence(self, scan_task) -> bool:
+    def calculate_sequence(self, scan_task)-> bool:
         log.info("Calculating sequence " + self.get_name())
         scan_task.processing.recon_mode = "bypass"
         self.seq_file_path = self.get_working_folder() + "/seq/acq0.seq"
 
         plt.clf()
         plt.title("Sequence")
+        channel = self.param_Gradient
+        if channel == "x":
+            max_grad = cfg.GX_MAX
+        elif channel == "y":
+            max_grad = cfg.GY_MAX
+        elif channel == "z":
+            max_grad = cfg.GZ_MAX
 
+        seq = pp.Sequence()
+        self.system = pp.Opts(
+            max_grad=max_grad,  
+            grad_unit="Hz/m", # 
+            max_slew=1000,
+            slew_unit="T/m/s",
+            #rf_ringdown_time=100e-6,
+            rf_ringdown_time=20e-6,
+            rf_dead_time=100e-6,
+            rf_raster_time=1e-6,
+            #adc_dead_time=10e-6,
+            adc_dead_time=20e-6,
+            grad_raster_time = 1/self.param_BW,
+            B0=0.27,
+            )
+        log.info("Using system config: ", self.system)
         make_se_1D.pypulseq_1dse(
             inputs={
                 "TE": self.param_TE,
@@ -128,11 +148,12 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
                 "Base_Resolution": self.param_Base_Resolution,
                 "BW": self.param_BW,
                 "Gradient": self.param_Gradient,
+                "system": self.system,
             },
             check_timing=True,
             output_file=self.seq_file_path,
         )
-
+        
         file = open(self.get_working_folder() + "/other/seq1.plot", "wb")
         fig = plt.figure(1)
         pickle.dump(fig, file)
@@ -161,25 +182,24 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
 
     def run_sequence(self, scan_task) -> bool:
         log.info("Running sequence " + self.get_name())
-        iterations = 1
-        for iter in range(iterations):
-            rxd, _ = run_pulseq(
-                seq_file=self.seq_file_path,
-                rf_center=cfg.LARMOR_FREQ, #scan_task.adjustment.rf.larmor_frequency,
-                tx_t=1,
-                grad_t=10,
-                tx_warmup=100,
-                shim_x=-0.0,
-                shim_y=-0.0,
-                shim_z=-0.0,
-                grad_cal=False,
-                save_np=False,
-                save_mat=False,
-                save_msgs=True,
-                gui_test=False,
-                case_path=self.get_working_folder(),
-            )
-        # Compute the average
+        rxd, _ = run_pulseq(
+        seq_file=self.seq_file_path,
+        rf_center=cfg.LARMOR_FREQ, #scan_task.adjustment.rf.larmor_frequency,
+        tx_t=1,
+        grad_t=np.round(self.system.grad_raster_time * 1e6, decimals=0), # us
+        tx_warmup=100,
+        shim_x=cfg.SHIM_X,
+        shim_y=cfg.SHIM_Y,
+        shim_z=cfg.SHIM_Z,
+        grad_cal=False,
+        save_np=False,
+        save_mat=False,
+        save_msgs=True,
+        gui_test=False,
+        case_path=self.get_working_folder(),
+        system = self.system
+        )
+    # Compute the average
         rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
         log.info("New shape of rx data:", rxd_rs.shape)
         rxd_avg = (np.average(rxd_rs, axis=1))

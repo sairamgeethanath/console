@@ -55,6 +55,7 @@ def run_pulseq(
     raw_filename="",
     expected_duration_sec=-1,
     hardware_simulation=False,
+    system = None,
 ):
     """
     Interpret pulseq .seq file through flocra_pulseq
@@ -75,7 +76,7 @@ def run_pulseq(
         expt (flocra_pulseq.interpreter): Default None, pass in existing experiment to continue an object
         plot_instructions (bool): Default None, plot instructions for debugging
         gui_test (bool): Default False, load dummy data for gui testing
-
+        system (pp.Opts): Default None, system configuration for pypulseq
     Returns:
         numpy.ndarray: Rx data array
         float: (us) Rx period
@@ -96,7 +97,7 @@ def run_pulseq(
 
     # Initialize the interpreter object and feed seq file or object
     psi = seq2flocra(center_freq=rf_center * 1e6,
-                     rf_amp_max=rf_max)
+                     rf_amp_max=rf_max, system=system)
     psi.load_seqfile(seq_file)
     psi.block_events_to_amps_times()
     instructions = psi._flo_dict
@@ -109,7 +110,7 @@ def run_pulseq(
             rx_t=psi._rx_t,
             init_gpa=True,
             gpa_fhdo_offset_time= psi._grad_t / 3,
-            grad_max_update_rate=0.125,
+            grad_max_update_rate=0.0625,# 0.125
             halt_and_reset=True,
         )
     

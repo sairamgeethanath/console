@@ -59,7 +59,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 20,
+            "TE": 12,
             "TR": 1000,
             "NSA": 1,
             "FOV": 20,
@@ -186,9 +186,10 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
             / 1000
         )
 
-        rxd, rx_t = run_pulseq(
+        rxd, _ = run_pulseq(
             seq_file=self.seq_file_path,
             rf_center=scan_task.adjustment.rf.larmor_frequency,
+            # rf_center=cfg.LARMOR_FREQ,
             tx_t=1,
             grad_t=10,
             tx_warmup=100,

@@ -55,7 +55,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 20,
+            "TE": 12,
             "TR": 250,
             "NSA": 1,
             "ADC_samples": 4096,
