@@ -20,12 +20,12 @@ log = logger.get_logger()
 
 class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 20
+    param_TE: int = 3
     param_TR: int = 1000
     param_NSA: int = 1
-    param_FOV: int = 20
-    param_Orientation: str = "Axial"
-    param_Base_Resolution: int = 128
+    param_FOV: int = 64
+    param_Orientation: str = "Coronal"
+    param_Base_Resolution: int = 64
     param_BW: int = 32000
     param_Trajectory: str = "Cartesian"
     param_PE_Ordering: str = "Center_out"
@@ -59,12 +59,12 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 12,
+            "TE": 3,
             "TR": 1000,
             "NSA": 1,
-            "FOV": 20,
-            "Orientation": "Axial",
-            "Base_Resolution": 128,
+            "FOV": 64,
+            "Orientation": "Coronal",
+            "Base_Resolution": 64,
             "BW": 32000,
             "Trajectory": "Cartesian",
             "PE_Ordering": "Center_out",
@@ -134,7 +134,23 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         # scan_task.processing.dim_size = f"{self.param_baseresolution},{2*self.param_baseresolution}"
         # scan_task.processing.oversampling_read = 2
         # scan_task.processing.recon_mode = "basic2d"
-
+        max_grad = np.min([cfg.GX_MAX, cfg.GY_MAX, cfg.GZ_MAX])
+        self.system = pp.Opts(
+            max_grad=max_grad,  
+            grad_unit="Hz/m", # 
+            max_slew=1000,
+            slew_unit="T/m/s",
+            #rf_ringdown_time=100e-6,
+            rf_ringdown_time=20e-6,
+            rf_dead_time=100e-6,
+            rf_raster_time=1e-6,
+            #adc_dead_time=10e-6,
+            adc_dead_time=20e-6,
+            grad_raster_time = 1/self.param_BW,
+            B0=0.27,
+            )
+        log.info("Using system config: ", self.system)
+        
         # ToDo: if self.Trajectory == "Cartesian": (default)
         make_se_2D.pypulseq_se2D(
             inputs={
@@ -149,6 +165,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
                 "PE_Ordering": self.param_PE_Ordering,
                 "PF": self.param_PF,
                 "view_traj": self.param_view_traj,
+                "system": self.system,
             },
             check_timing=True,
             output_file=self.seq_file_path,
@@ -186,16 +203,15 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
             / 1000
         )
 
-        rxd, _ = run_pulseq(
+        rxd, _ = run_pulseq(    
             seq_file=self.seq_file_path,
-            rf_center=scan_task.adjustment.rf.larmor_frequency,
-            # rf_center=cfg.LARMOR_FREQ,
+            rf_center=cfg.LARMOR_FREQ,
             tx_t=1,
-            grad_t=10,
+            grad_t= np.round(self.system.grad_raster_time * 1e6, decimals=0),
             tx_warmup=100,
-            shim_x=0,
-            shim_y=0,
-            shim_z=0,
+            shim_x=cfg.SHIM_X,
+            shim_y=cfg.SHIM_Y,
+            shim_z=cfg.SHIM_Z,
             grad_cal=False,
             save_np=False,
             save_mat=False,
@@ -203,6 +219,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
             gui_test=False,
             case_path=self.get_working_folder(),
             expected_duration_sec=expected_duration_sec,
+            system = self.system,
         )
 
         # # Compute the average

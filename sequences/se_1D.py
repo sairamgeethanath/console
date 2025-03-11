@@ -23,8 +23,8 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     param_TR: int = 1000
     param_NSA: int = 1
     param_FOV: int = 64
-    param_Base_Resolution: int = 128
-    param_BW: int = 64000
+    param_Base_Resolution: int = 64
+    param_BW: int = 32000
     param_Gradient: str = "x"
     param_debug_plot: bool = True
 
@@ -60,8 +60,8 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
             "TR": 1000,
             "NSA": 1,
             "FOV": 64,
-            "Base_Resolution": 128,
-            "BW": 64000,
+            "Base_Resolution": 64,
+            "BW": 32000,
             "Gradient": "x",
         }
 
@@ -123,7 +123,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         elif channel == "z":
             max_grad = cfg.GZ_MAX
 
-        seq = pp.Sequence()
+        # seq = pp.Sequence()
         self.system = pp.Opts(
             max_grad=max_grad,  
             grad_unit="Hz/m", # 

@@ -9,7 +9,7 @@ log = logger.get_logger()
 
 
 def pypulseq_se2D(
-    inputs=None, check_timing=True, output_file="", output_folder="") -> bool:
+    inputs=None, check_timing=True, system=None, output_file="", output_folder="") -> bool:
     if not output_file:
         log.error("No output file specified")
         return False
@@ -68,17 +68,17 @@ def pypulseq_se2D(
     # SET SYSTEM CONFIG TODO --> ?
     # ======
 
-    system = pp.Opts(
-        max_grad=1e7,
-        grad_unit="Hz/m",
-        max_slew=4000,
-        slew_unit="T/m/s",
-        rf_ringdown_time=20e-6,
-        rf_dead_time=100e-6,
-        rf_raster_time=1e-6,
-        adc_dead_time=20e-6,
-        grad_raster_time= adc_dwell # should be equal to adc raster time
-    )
+    # system = pp.Opts(
+    #     max_grad=1e7,
+    #     grad_unit="Hz/m",
+    #     max_slew=4000,
+    #     slew_unit="T/m/s",
+    #     rf_ringdown_time=20e-6,
+    #     rf_dead_time=100e-6,
+    #     rf_raster_time=1e-6,
+    #     adc_dead_time=20e-6,
+    #     grad_raster_time= adc_dwell # should be equal to adc raster time
+    # )
 
     # ======
     # CREATE EVENTS

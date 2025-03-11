@@ -120,6 +120,8 @@ class Experiment:
         if initial_wait is None:
             # auto-set the initial wait to be long enough for initial gradient configuration to finish, plus 1us for miscellaneous startup
             self._initial_wait = 1 + 1/grad_max_update_rate
+        else:
+            self._initial_wait = initial_wait
 
         self._auto_leds = auto_leds
 

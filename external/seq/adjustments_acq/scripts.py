@@ -101,7 +101,7 @@ def run_pulseq(
     psi.load_seqfile(seq_file)
     psi.block_events_to_amps_times()
     instructions = psi._flo_dict
-    
+    log.info("***GPA grad t***: ", psi._grad_t)
     # Initialize experiment class
     if expt is None:
         log.debug("Initializing marcos client...")
@@ -109,8 +109,8 @@ def run_pulseq(
             lo_freq=rf_center,
             rx_t=psi._rx_t,
             init_gpa=True,
-            gpa_fhdo_offset_time= psi._grad_t / 3,
-            grad_max_update_rate=0.0625,# 0.125
+            gpa_fhdo_offset_time= psi._grad_t / 3, # psi._grad_t / 3 
+            grad_max_update_rate=0.03125,# 0.125
             halt_and_reset=True,
         )
     

@@ -835,8 +835,11 @@ def grad_max_cal(
 
     peaks, _ = sig.find_peaks(np.abs(rx_fft), width=2)
     peak_results = sig.peak_widths(np.abs(rx_fft), peaks, rel_height=0.95)
-    max_peak = np.argmax(peak_results[0])
-    fwhm = peak_results[0][max_peak]
+    if peak_results is not None:
+        max_peak = np.argmax(peak_results[0])
+        fwhm = peak_results[0][max_peak]
+    else:
+        fwhm = 0
 
     fft_scale = 1e6 / (
         rx_period * rx_fft.shape[0]
@@ -887,8 +890,8 @@ def grad_max_cal(
         cfg.GY_MAX = grad_max
     elif channel == "z":
         cfg.GZ_MAX = grad_max
-
-    return grad_max
+    
+    return grad_max, fft_x, rx_fft, hline
 
 
 def shim_cal_linear(
@@ -909,6 +912,7 @@ def shim_cal_linear(
     smooth=True,
     plot=True,
     gui_test=False,
+    grad_t = 10,
 ):
     """
     Calibrate linear shims (offset for linear gradients)
@@ -958,11 +962,11 @@ def shim_cal_linear(
         else:
             shim_z = shim
 
-        rxd, rx_t = scr.run_pulseq(
+        rxd, _ = scr.run_pulseq(
             seq_file,
             rf_center=larmor_freq,
             tx_t=1,
-            grad_t=10,
+            grad_t=grad_t,
             tx_warmup=100,
             shim_x=shim_x,
             shim_y=shim_y,
@@ -1003,7 +1007,7 @@ def shim_cal_linear(
 
         plt.show()
 
-    return best_shim
+    return best_shim, fwhm_list, shim_range
 
 
 def shim_cal_multicoil(
