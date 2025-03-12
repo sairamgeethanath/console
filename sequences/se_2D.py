@@ -20,13 +20,13 @@ log = logger.get_logger()
 
 class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 3
+    param_TE: int = 5
     param_TR: int = 1000
     param_NSA: int = 1
     param_FOV: int = 64
     param_Orientation: str = "Coronal"
     param_Base_Resolution: int = 64
-    param_BW: int = 32000
+    param_BW: int = 16000
     param_Trajectory: str = "Cartesian"
     param_PE_Ordering: str = "Center_out"
     param_PF: int = 1
@@ -59,13 +59,13 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 3,
+            "TE": 5,
             "TR": 1000,
             "NSA": 1,
             "FOV": 64,
             "Orientation": "Coronal",
             "Base_Resolution": 64,
-            "BW": 32000,
+            "BW": 16000,
             "Trajectory": "Cartesian",
             "PE_Ordering": "Center_out",
             "PF": 1,

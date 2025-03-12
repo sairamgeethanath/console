@@ -21,11 +21,11 @@ log = logger.get_logger()
 
 class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 70
+    param_TE: int = 10
     param_TR: int = 250
     param_NSA: int = 1
-    param_ADC_samples: int = 4096
-    param_ADC_duration: int = 6400
+    param_ADC_samples: int = 512
+    param_ADC_duration: int = 5120
     param_debug_plot: bool = True
     
 
@@ -55,13 +55,13 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 12,
+            "TE": 10,
             "TR": 250,
             "NSA": 1,
-            "ADC_samples": 4096,
-            "ADC_duration": 6400,
+            "ADC_samples": 512,
+            "ADC_duration": 5120,
             "debug_plot": True,
-            "TX_Freq": 15.6125,
+            "TX_Freq": 11.4725,
         }
 
     def set_parameters(self, parameters, scan_task) -> bool:
@@ -135,7 +135,7 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
             rf_center=cfg.LARMOR_FREQ, # scan_task.adjustment.rf.larmor_frequency,
             # rf_center=scan_task.adjustment.rf.larmor_frequency,
             tx_t=1,
-            grad_t=10,
+            grad_t=self.param_ADC_duration / self. param_ADC_samples,
             tx_warmup=100,
             shim_x=cfg.SHIM_X,
             shim_y=cfg.SHIM_Y,
