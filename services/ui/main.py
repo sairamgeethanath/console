@@ -131,7 +131,7 @@ def prepare_system() -> bool:
         rt.set_debug(True)
 
     ui_runtime.system_information.name = "dev-system1"
-    ui_runtime.system_information.model = "Zeugmatron Z1"
+    ui_runtime.system_information.model = "Tenacity"
     ui_runtime.system_information.serial_number = "000001"
     ui_runtime.system_information.software_version = mri4all_version.get_version_string()
 
