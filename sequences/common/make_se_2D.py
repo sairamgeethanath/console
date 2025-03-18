@@ -51,10 +51,10 @@ def pypulseq_se2D(
         ch0 = "x"
         ch1 = "z"
     elif Orientation == "Sagittal":
-        ch0 = "x"
-        ch1 = "y"
+        ch0 = "y"
+        ch1 = "z"
     elif Orientation == "Coronal":
-        ch0 = "z"
+        ch0 = "x"
         ch1 = "y"
     log.info('Orientation: Ch0 and Ch1', Orientation, ch0, ch1)
 
@@ -95,7 +95,7 @@ def pypulseq_se2D(
         flip_angle=alpha2 * math.pi / 180,
         duration=alpha2_duration,
         delay=100e-6,
-        phase_offset=math.pi / 2,
+        phase_offset= math.pi / 2,
         system=system,
         use="refocusing",
     )
@@ -125,17 +125,25 @@ def pypulseq_se2D(
         rise_time=rise_time,
         system=system,
     )
+    gx_rew = pp.make_trapezoid(
+        channel=ch0,
+        area=-gx.area / 2,
+        duration=prephaser_duration,
+        rise_time=rise_time,
+        system=system,
+    )
 
     adc = pp.make_adc(
-        num_samples=2 * Nx,
+        # num_samples=2 * Nx,
+        num_samples= 2 * Nx,
         duration=gx.flat_time,
         delay=gx.rise_time,
-        phase_offset=np.pi / 2,
+        phase_offset= math.pi / 2,
         system=system,
     )
 
 
-    Ny = Nx
+    Ny = int(Nx * 1.5) # 2 oversampling in phase direction
     phase_areas = -(np.arange(Ny) - Ny / 2) * delta_k 
 
 
@@ -220,7 +228,7 @@ def pypulseq_se2D(
             seq.add_block(gx, adc)
             gy_pre.amplitude = -gy_pre.amplitude
             # seq.add_block(gx_spoil, gy_pre)  # TODO: Figure if we need spoiling
-            seq.add_block(gy_pre)  # TODO: Figure if we need spoiling
+            seq.add_block(gy_pre, gx_rew)  # TODO: Figure if we need spoiling
             seq.add_block(pp.make_delay(delay_TR))
 
     # Check whether the timing of the sequence is correct

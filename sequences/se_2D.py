@@ -20,13 +20,13 @@ log = logger.get_logger()
 
 class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     # Sequence parameters
-    param_TE: int = 5
+    param_TE: int = 40
     param_TR: int = 1000
     param_NSA: int = 1
-    param_FOV: int = 64
+    param_FOV: int = 128
     param_Orientation: str = "Coronal"
     param_Base_Resolution: int = 64
-    param_BW: int = 16000
+    param_BW: int = 32000
     param_Trajectory: str = "Cartesian"
     param_PE_Ordering: str = "Center_out"
     param_PF: int = 1
@@ -34,7 +34,7 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
 
     @classmethod
     def get_readable_name(self) -> str:
-        return "2D Spin-Echo  [untested]"
+        return "2D Spin-Echo"
 
     def setup_ui(self, widget) -> bool:
         seq_path = os.path.dirname(os.path.abspath(__file__))
@@ -59,13 +59,13 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
     @classmethod
     def get_default_parameters(self) -> dict:
         return {
-            "TE": 5,
+            "TE": 40,
             "TR": 1000,
             "NSA": 1,
-            "FOV": 64,
+            "FOV": 128,
             "Orientation": "Coronal",
             "Base_Resolution": 64,
-            "BW": 16000,
+            "BW": 32000,
             "Trajectory": "Cartesian",
             "PE_Ordering": "Center_out",
             "PF": 1,
@@ -223,32 +223,47 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         )
 
         # # Compute the average
-
-        rxd_rs = np.reshape(rxd, (2 * self.param_Base_Resolution, self.param_Base_Resolution, self.param_NSA), order='F')
+        self.param_oversampling = 2
+        self.param_phase_oversampling = 1.5
+        rxd_rs = np.reshape(rxd, (self.param_oversampling * self.param_Base_Resolution, int(self.param_phase_oversampling * self.param_Base_Resolution), self.param_NSA), order='F')
+        log.info("type of rx data:", type(rxd_rs))
         log.info("New shape of rx data:", rxd_rs.shape)
         rxd_avg = (np.average(rxd_rs, axis=2))
         
         log.info("Done running sequence " + self.get_name())
         # data = rxd_avg.reshape((2 * self.param_Base_Resolution, self.param_Base_Resolution))
         # log.info("Shape of data:", data.shape)
+        
+        filtering = True
+        if filtering is True:
+            for i in range(rxd_avg.shape[1]):
+                rxd_avg[:, i] = np.convolve(rxd_avg[:, i], np.ones(9)/9, mode='same')
+
+
         data = rxd_avg #rxd_avg.reshape((self.param_Base_Resolution, 2 * self.param_Base_Resolution))
         log.info("Plotting figures")
         
-        kspace_filter = False
+        kspace_chop = True
+        if kspace_chop is True:
+            # filter = np.zeros(data.shape)
+            flat_start = 5
+            flat_stop = 90
+            data2 = np.zeros(data.shape, dtype=complex)
+            data2[:, flat_start: flat_stop] = data[:, flat_start: flat_stop]
+            # filter[:, flat_start:flat_stop] = 1
+            # filter[:, 0:flat_start] = np.ones((data.shape[0], 10)) * 0 #np.linspace(0, 1, flat_start)
+            # filter[:, flat_stop:] = np.ones((data.shape[0], 10)) * 0 #np.linspace(1, 0, flat_start)
+            # data = np.multiply(data, filter)
+            data = data2
 
-        if kspace_filter is True:
-            shape = data.shape
-            cutoff_radius_ratio = 0.2
-            axes = [np.linspace(-dim/2, dim/2, dim) for dim in shape[0:2]]
-            grid = np.meshgrid(*axes, indexing='xy')
-            pos = np.stack(grid, axis=-1)
-            filter = np.sin(np.pi*np.linalg.norm(pos, axis=-1)/(cutoff_radius_ratio*shape[0]))**2
-            filter = 1 - np.transpose(filter)
-            log.info(np.max(filter))
-            log.info(data.shape)
-            data = np.multiply(data, filter)
-
-
+        nex_recon = False
+        if nex_recon is True:
+            data2 = np.zeros(data.shape, dtype=complex)
+            mid = data.shape[1]//2
+            add_lines=10
+            data2[:, :mid + add_lines] = data[:, :mid + add_lines]
+            data2[:, mid + add_lines:] = np.fliplr(np.conj(data[:, :mid - add_lines]))
+            data = data2
 
         plt.clf()
         plt.title(f"k-space data")
@@ -272,20 +287,37 @@ class SequenceSE_2D(PulseqSequence, registry_key=Path(__file__).stem):
         plt.clf()
         plt.title(f"Image data")
         # recon = np.fft.fftshift(np.fft.ifft2(np.fft.fftshift(data)))
-        recon = np.fft.fftshift(np.fft.fft2(data))
+        recon = np.fft.fftshift(np.fft.ifft2(data))
+
+        # for tenacity gradients, use this
+        tenacity_gradients = False
+        if tenacity_gradients is True:
+            m, n = recon.shape
+            recon2 = np.zeros((m, n), dtype=complex)
+            recon2[int(m * 0.5):, :] = recon[int(m * 0.5):, :] + np.flip((recon[:int(m * 0.5), :]), axis=0)
+            recon = recon2
 
         # plt.grid(True, color="#333")
         half_width = int(self.param_Base_Resolution / 2)
-        recon2 = np.squeeze(recon[:, half_width:self.param_Base_Resolution + half_width])
-        plt.imshow(np.abs(recon))
+        half_length = int(self.param_Base_Resolution / 4)
+        recon2 = np.squeeze(recon[half_width:self.param_Base_Resolution + half_width, 
+                                  half_length: self.param_Base_Resolution + half_length]) # TODO : also remove the phase oversampling
+        
+        
+        recon3 = recon2[16:48, :]
+        recon4 = np.zeros(recon2.shape, dtype=complex)
+        recon4[16:48, :] = (np.roll(recon3, 16, axis=0))
+
+        # recon2 = np.fft.fftshift(np.abs(recon2), axes = 0)
+        plt.imshow(np.abs(recon2))
         plt.set_cmap('gray')
         file = open(self.get_working_folder() + "/other/fft.plot", "wb")
         fig = plt.gcf()
         pickle.dump(fig, file)
         file.close()
         result = ResultItem()
-        result.name = "FFT"
-        result.description = "FFT of ADC signal"
+        result.name = "Image"
+        result.description = "Image data"
         result.type = "plot"
         result.autoload_viewer = 2
         result.primary = True

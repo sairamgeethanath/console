@@ -203,6 +203,10 @@ class SequenceRF_SE(PulseqSequence, registry_key=Path(__file__).stem):
         rxd_rs = np.reshape(rxd, (int(rxd.shape[0]/self.param_NSA), self.param_NSA), order='F')
         log.info("New shape of rx data:", rxd_rs.shape)
         rxd_avg = (np.average(rxd_rs, axis=1))
+        filtering = True
+        if filtering is True:
+            rxd_avg = np.convolve(rxd_avg, np.ones(5)/5, mode='same')
+
         log.info("Done running sequence " + self.get_name())
         log.info("Plotting figures")
         

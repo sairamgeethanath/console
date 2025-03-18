@@ -110,7 +110,7 @@ def run_pulseq(
             rx_t=psi._rx_t,
             init_gpa=True,
             gpa_fhdo_offset_time= psi._grad_t / 3, # psi._grad_t / 3 
-            grad_max_update_rate=0.03125,# 0.125
+            grad_max_update_rate=0.125,# 0.125 - 0.06125 works
             halt_and_reset=True,
         )
     
