@@ -3,6 +3,10 @@ set -euo pipefail
 
 MRI4ALL_BASE=/opt/mri4all
 MRI4ALL_USER=vagrant
+DELTA_BASE=/opt/
+DELTA_GRAD_BASE=/opt/planar_gradient_coil_design
+DELTA_PASSIVE_SHIMMING_BASE=/opt/passive_shimming
+DELTA_PYPULSEQ_BASE=/opt/pypulseq
 
 error() {
   local parent_lineno="$1"
@@ -81,6 +85,7 @@ install_console() {
   fi
 }
 
+
 install_python_dependencies() {
   echo "## Installing Python runtime environment..."
   
@@ -93,6 +98,15 @@ install_python_dependencies() {
   cd /opt/mri4all/console
   sudo su $MRI4ALL_USER -c "$MRI4ALL_BASE/env/bin/pip install --isolated -r \"$MRI4ALL_BASE/console/requirements.txt\""
 }
+
+
+
+
+
+
+
+
+
 
 echo ""
 echo "## Installing MRI4ALL console software..."
