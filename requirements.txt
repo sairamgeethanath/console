@@ -30,7 +30,7 @@ msgpack~=1.0.5
 plotly~=5.9.0
 deap~=1.4.1
 imageio~=2.19.3
-numpy==1.25
+#numpy==1.25
 tqdm~=4.66.1
 numba==0.58.0
 pypulseq==1.4.2
