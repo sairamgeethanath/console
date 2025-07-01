@@ -6,7 +6,7 @@ MRI4ALL_USER=vagrant
 DELTA_BASE=/opt/
 DELTA_GRAD_BASE=/opt/planar_gradient_coil_design
 DELTA_PASSIVE_SHIMMING_BASE=/opt/passive_shimming
-DELTA_PYPULSEQ_BASE=/opt/pypulseq
+
 
 error() {
   local parent_lineno="$1"
@@ -75,7 +75,6 @@ create_folders () {
   create_folder $MRI4ALL_BASE/logs
   create_folder $DELTA_GRAD_BASE
   create_folder $DELTA_PASSIVE_SHIMMING_BASE
-  create_folder $DELTA_PYPULSEQ_BASE
 }
 
 install_console() {
@@ -104,13 +103,7 @@ install_passive_shimming() {
   sudo su $MRI4ALL_USER -c "git submodule update --init --recursive"
 }
 
-install_pypulseq() {
-  echo "## Installing pypulseq repository..."
-  cd $DELTA_PYPULSEQ_BASE
-  sudo su $MRI4ALL_USER -c "git clone --branch workshop_2025 https://github.com/imr-framework/pypulseq.git pypulseq"
-  cd pypulseq
-  sudo su $MRI4ALL_USER -c "git submodule update --init --recursive"
-}
+
 
 
 install_python_dependencies_console() {
@@ -131,7 +124,7 @@ install_python_dependencies_gradients() {
   echo "## Installing Python runtime environment..."
   
   if [ ! -e "$DELTA_GRAD_BASE/env" ]; then
-    sudo su $MRI4ALL_USER -c "mkdir \"$DELTA_GRAD_BASE/env\""
+  sudo su $MRI4ALL_USER -c "mkdir \"$DELTA_GRAD_BASE/env\""
 	sudo su $MRI4ALL_USER -c "python3 -m venv $DELTA_GRAD_BASE/env"
   fi
 
@@ -154,18 +147,6 @@ install_python_dependencies_passive_shimming() {
   sudo su $MRI4ALL_USER -c "$DELTA_PASSIVE_SHIMMING_BASE/env/bin/pip install --isolated -r \"$DELTA_PASSIVE_SHIMMING_BASE/passive_shimming/requirements.txt\""
 }
 
-install_python_dependencies_pypulseq() {
-  echo "## Installing Python runtime environment..."
-  
-  if [ ! -e "$DELTA_PYPULSEQ_BASE/env" ]; then
-    sudo su $MRI4ALL_USER -c "mkdir \"$DELTA_PYPULSEQ_BASE/env\""
-	sudo su $MRI4ALL_USER -c "python3 -m venv $DELTA_PYPULSEQ_BASE/env"
-  fi
-
-  echo "## Installing required Python packages..."
-  cd /opt/mri4all/console
-  sudo su $MRI4ALL_USER -c "$DELTA_PYPULSEQ_BASE/env/bin/pip install --isolated -r \"$DELTA_PYPULSEQ_BASE/passive_shimming/requirements.txt\""
-}
 
 echo ""
 echo "## Installing MRI4ALL console software, planar gradient design, passive shimming and pypulseq..."
@@ -184,8 +165,7 @@ install_python_dependencies_gradients
 install_passive_shimming
 install_python_dependencies_passive_shimming
 
-install_pypulseq
-install_python_dependencies_pypulseq
+
 
 echo ""
 echo "Installation complete."
