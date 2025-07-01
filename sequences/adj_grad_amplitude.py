@@ -62,7 +62,7 @@ class CalGradAmplitude(PulseqSequence, registry_key=Path(__file__).stem):
                 log.info(f"Calibrating {axis} axis")
                 grad_max, fft_x, rx_fft, hline = grad_max_cal(
                     channel=axis,
-                    phantom_width=30,
+                    phantom_width=30, # 30 mm phantom width
                     larmor_freq=cfg.LARMOR_FREQ,
                     calibration_power=0.8,
                     trs=3,
